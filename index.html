@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RCC Predictive Monitor</title>
+  <!-- Chart.js for the real-time line chart -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- Firebase SDK (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+      background: #f3f6fc;
+      color: #1a1f2e;
+      padding: 16px;
+    }
+
+    .app {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      background: #ffffff;
+      padding: 16px 24px;
+      border-radius: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+      margin-bottom: 20px;
+    }
+
+    .header h1 {
+      font-size: 1.6rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: #0b1c3f;
+    }
+
+    .header h1 span {
+      color: #2563eb;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 40px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      background: #eef2f6;
+      color: #334155;
+    }
+
+    .status-badge .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #94a3b8;
+    }
+
+    .status-badge.online .dot {
+      background: #22c55e;
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+    }
+
+    .status-badge.offline .dot {
+      background: #ef4444;
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+    }
+
+    /* Cards grid */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 20px 22px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+      border: 1px solid #eef2f6;
+    }
+
+    .card .label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+
+    .card .value {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1.1;
+      color: #0b1c3f;
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+
+    .card .value .unit {
+      font-size: 1rem;
+      font-weight: 500;
+      color: #64748b;
+    }
+
+    .card .sub {
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .card .sub .tag {
+      padding: 2px 10px;
+      border-radius: 30px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .tag.normal {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .tag.fault {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .tag.nodata {
+      background: #f1f5f9;
+      color: #475569;
+    }
+
+    .card.alert {
+      border-left: 6px solid #ef4444;
+      background: #fff8f8;
+    }
+
+    .card.safe {
+      border-left: 6px solid #22c55e;
+    }
+
+    .card.reference {
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+    }
+
+    /* Two column layout for chart + logs */
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 18px 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+      border: 1px solid #eef2f6;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .panel-header h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #0b1c3f;
+    }
+
+    .panel-header .badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 30px;
+      background: #eef2f6;
+      color: #475569;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 260px;
+      width: 100%;
+    }
+
+    /* Log table */
+    .log-scroll {
+      max-height: 320px;
+      overflow-y: auto;
+      border-radius: 12px;
+      border: 1px solid #eef2f6;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      background: #f8fafc;
+      z-index: 2;
+    }
+
+    th {
+      text-align: left;
+      padding: 10px 12px;
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: #64748b;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #f1f5f9;
+      color: #1e293b;
+      vertical-align: middle;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .sensor-name {
+      font-weight: 600;
+      font-size: 0.8rem;
+      padding: 2px 10px;
+      border-radius: 30px;
+      display: inline-block;
+    }
+
+    .sensor-name.temperature {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .sensor-name.fsr {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .sensor-name.displacement {
+      background: #f3e8ff;
+      color: #6b21a8;
+    }
+
+    .fault-badge {
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 2px 10px;
+      border-radius: 30px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .empty-state {
+      padding: 32px 16px;
+      text-align: center;
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      padding: 16px 0 8px;
+    }
+
+    .refresh-note {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pulse {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.4;
+        transform: scale(0.9);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- Header -->
+    <header class="header">
+      <h1>⚙️ RCC <span>Predictive Monitor</span></h1>
+      <div id="statusBadge" class="status-badge offline">
+        <span class="dot"></span>
+        <span id="statusText">Connecting…</span>
+      </div>
+    </header>
+
+    <!-- Live reading cards -->
+    <div class="cards">
+      <div class="card" id="tempCard">
+        <div class="label">Temperature</div>
+        <div class="value">
+          <span id="tempValue">—</span>
+          <span class="unit">°C</span>
+        </div>
+        <div class="sub">
+          <span id="tempStatus" class="tag nodata">No data</span>
+          <span id="tempRef" style="color:#94a3b8;">ref —</span>
+        </div>
+      </div>
+
+      <div class="card" id="fsrCard">
+        <div class="label">Force (FSR)</div>
+        <div class="value">
+          <span id="fsrValue">—</span>
+          <span class="unit">ADC</span>
+        </div>
+        <div class="sub">
+          <span id="fsrStatus" class="tag nodata">No data</span>
+          <span id="fsrRef" style="color:#94a3b8;">ref —</span>
+        </div>
+      </div>
+
+      <div class="card" id="dispCard">
+        <div class="label">Displacement</div>
+        <div class="value">
+          <span id="dispValue">—</span>
+          <span class="unit">mm</span>
+        </div>
+        <div class="sub">
+          <span id="dispStatus" class="tag nodata">No data</span>
+          <span id="dispRef" style="color:#94a3b8;">ref —</span>
+        </div>
+      </div>
+
+      <div class="card reference" id="refCard">
+        <div class="label">Baseline reference</div>
+        <div class="value" style="font-size:1.1rem; gap:12px;">
+          <span id="refSummary" style="font-weight:500; color:#475569;">Not set</span>
+        </div>
+        <div class="sub" id="refDetail" style="color:#94a3b8;">Press SET on device</div>
+      </div>
+    </div>
+
+    <!-- Chart + Fault log -->
+    <div class="row">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>📈 Temperature history</h2>
+          <span class="badge" id="chartBadge">live</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="tempChart"></canvas>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>⚠️ Fault log</h2>
+          <span class="badge" id="faultCount">0 entries</span>
+        </div>
+        <div class="log-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Sensor</th>
+                <th>Value</th>
+                <th>Deviation</th>
+                <th>Time</th>
+              </tr>
+            </thead>
+            <tbody id="faultTableBody">
+              <tr>
+                <td colspan="4" class="empty-state">No fault entries yet</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span class="refresh-note"><span class="pulse"></span> Real-time · Firebase Realtime Database</span>
+    </div>
+  </div>
+
+  <script>
+    // ============================================================
+    //  FIREBASE CONFIGURATION
+    //  (Your database URL from the ESP32 code)
+    // ============================================================
+    const firebaseConfig = {
+      databaseURL: "https://rcc-predictive-monitor-default-rtdb.asia-southeast1.firebasedatabase.app"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // ============================================================
+    //  DOM ELEMENTS
+    // ============================================================
+    const statusBadge = document.getElementById('statusBadge');
+    const statusText = document.getElementById('statusText');
+
+    const tempValue = document.getElementById('tempValue');
+    const tempStatus = document.getElementById('tempStatus');
+    const tempRef = document.getElementById('tempRef');
+    const tempCard = document.getElementById('tempCard');
+
+    const fsrValue = document.getElementById('fsrValue');
+    const fsrStatus = document.getElementById('fsrStatus');
+    const fsrRef = document.getElementById('fsrRef');
+    const fsrCard = document.getElementById('fsrCard');
+
+    const dispValue = document.getElementById('dispValue');
+    const dispStatus = document.getElementById('dispStatus');
+    const dispRef = document.getElementById('dispRef');
+    const dispCard = document.getElementById('dispCard');
+
+    const refSummary = document.getElementById('refSummary');
+    const refDetail = document.getElementById('refDetail');
+    const refCard = document.getElementById('refCard');
+
+    const faultTableBody = document.getElementById('faultTableBody');
+    const faultCount = document.getElementById('faultCount');
+
+    // ============================================================
+    //  CHART SETUP  (Temperature over time)
+    // ============================================================
+    const ctx = document.getElementById('tempChart').getContext('2d');
+    const MAX_CHART_POINTS = 60;
+
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Temperature (°C)',
+          data: [],
+          borderColor: '#2563eb',
+          backgroundColor: 'rgba(37, 99, 235, 0.08)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 2,
+          pointBackgroundColor: '#2563eb',
+          borderWidth: 2,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 300 },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.parsed.y.toFixed(1)} °C`
+            }
+          }
+        },
+        scales: {
+          x: {
+            display: true,
+            grid: { display: false },
+            ticks: { maxTicksLimit: 8, font: { size: 10 }, color: '#94a3b8' }
+          },
+          y: {
+            display: true,
+            grid: { color: '#eef2f6' },
+            ticks: {
+              font: { size: 10 },
+              color: '#94a3b8',
+              callback: (v) => v + '°'
+            },
+            suggestedMin: 15,
+            suggestedMax: 40
+          }
+        }
+      }
+    });
+
+    // ============================================================
+    //  HELPERS
+    // ============================================================
+    function formatTime(ms) {
+      if (!ms && ms !== 0) return '—';
+      const d = new Date(ms);
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function formatUptime(ms) {
+      if (!ms && ms !== 0) return '—';
+      const s = Math.floor(ms / 1000);
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const sec = s % 60;
+      if (h > 0) return `${h}h ${m}m`;
+      if (m > 0) return `${m}m ${sec}s`;
+      return `${sec}s`;
+    }
+
+    // ============================================================
+    //  RENDER LATEST SENSOR SNAPSHOT
+    // ============================================================
+    function renderLatest(data) {
+      if (!data) {
+        // clear everything
+        tempValue.textContent = '—';
+        fsrValue.textContent = '—';
+        dispValue.textContent = '—';
+        tempStatus.textContent = 'No data';
+        tempStatus.className = 'tag nodata';
+        fsrStatus.textContent = 'No data';
+        fsrStatus.className = 'tag nodata';
+        dispStatus.textContent = 'No data';
+        dispStatus.className = 'tag nodata';
+        tempRef.textContent = 'ref —';
+        fsrRef.textContent = 'ref —';
+        dispRef.textContent = 'ref —';
+        tempCard.classList.remove('alert', 'safe');
+        fsrCard.classList.remove('alert', 'safe');
+        dispCard.classList.remove('alert', 'safe');
+        refSummary.textContent = 'Not set';
+        refDetail.textContent = 'Press SET on device';
+        refCard.classList.remove('alert', 'safe');
+        return;
+      }
+
+      // --- Temperature ---
+      const tempValid = data.temperatureValid !== false && data.temperatureC !== -999;
+      tempValue.textContent = tempValid ? Number(data.temperatureC).toFixed(1) : '—';
+      const tempFault = data.temperatureFault === true;
+      const tempDev = data.referenceTemperatureC
+        ? Math.abs((data.temperatureC - data.referenceTemperatureC) / data.referenceTemperatureC * 100).toFixed(1)
+        : null;
+
+      if (!tempValid) {
+        tempStatus.textContent = 'Sensor error';
+        tempStatus.className = 'tag nodata';
+        tempCard.classList.remove('alert', 'safe');
+        tempCard.classList.add('alert');
+      } else if (tempFault) {
+        tempStatus.textContent = `⚠ Fault (${tempDev}%)`;
+        tempStatus.className = 'tag fault';
+        tempCard.classList.add('alert');
+        tempCard.classList.remove('safe');
+      } else {
+        tempStatus.textContent = 'Normal';
+        tempStatus.className = 'tag normal';
+        tempCard.classList.add('safe');
+        tempCard.classList.remove('alert');
+      }
+
+      if (data.referenceSet) {
+        tempRef.textContent = `ref ${Number(data.referenceTemperatureC).toFixed(1)}°C`;
+      } else {
+        tempRef.textContent = 'ref —';
+      }
+
+      // --- FSR ---
+      fsrValue.textContent = data.fsr ?? '—';
+      const fsrFault = data.fsrFault === true;
+      const fsrDev = data.referenceFSR
+        ? Math.abs((data.fsr - data.referenceFSR) / data.referenceFSR * 100).toFixed(1)
+        : null;
+
+      if (fsrFault) {
+        fsrStatus.textContent = `⚠ Fault (${fsrDev}%)`;
+        fsrStatus.className = 'tag fault';
+        fsrCard.classList.add('alert');
+        fsrCard.classList.remove('safe');
+      } else if (data.referenceSet) {
+        fsrStatus.textContent = 'Normal';
+        fsrStatus.className = 'tag normal';
+        fsrCard.classList.add('safe');
+        fsrCard.classList.remove('alert');
+      } else {
+        fsrStatus.textContent = 'Waiting';
+        fsrStatus.className = 'tag nodata';
+        fsrCard.classList.remove('alert', 'safe');
+      }
+
+      fsrRef.textContent = data.referenceSet ? `ref ${data.referenceFSR}` : 'ref —';
+
+      // --- Displacement ---
+      dispValue.textContent = data.displacementMM != null ? Number(data.displacementMM).toFixed(1) : '—';
+      const dispFault = data.displacementFault === true;
+      const dispDev = data.referenceDisplacementMM
+        ? Math.abs((data.displacementMM - data.referenceDisplacementMM) / data.referenceDisplacementMM * 100).toFixed(1)
+        : null;
+
+      if (dispFault) {
+        dispStatus.textContent = `⚠ Fault (${dispDev}%)`;
+        dispStatus.className = 'tag fault';
+        dispCard.classList.add('alert');
+        dispCard.classList.remove('safe');
+      } else if (data.referenceSet) {
+        dispStatus.textContent = 'Normal';
+        dispStatus.className = 'tag normal';
+        dispCard.classList.add('safe');
+        dispCard.classList.remove('alert');
+      } else {
+        dispStatus.textContent = 'Waiting';
+        dispStatus.className = 'tag nodata';
+        dispCard.classList.remove('alert', 'safe');
+      }
+
+      dispRef.textContent = data.referenceSet ? `ref ${Number(data.referenceDisplacementMM).toFixed(1)} mm` : 'ref —';
+
+      // --- Baseline card ---
+      if (data.referenceSet) {
+        refSummary.textContent = '✓ Baseline saved';
+        refSummary.style.color = '#166534';
+        refDetail.textContent = `T: ${Number(data.referenceTemperatureC).toFixed(1)}°C · FSR: ${data.referenceFSR} · D: ${Number(data.referenceDisplacementMM).toFixed(1)}mm`;
+        refCard.classList.add('safe');
+        refCard.classList.remove('alert');
+      } else {
+        refSummary.textContent = 'Not set';
+        refSummary.style.color = '#475569';
+        refDetail.textContent = 'Press SET on device';
+        refCard.classList.remove('safe', 'alert');
+      }
+    }
+
+    // ============================================================
+    //  RENDER FAULT LOGS  (newest first)
+    // ============================================================
+    function renderFaultLogs(logs) {
+      if (!logs || logs.length === 0) {
+        faultTableBody.innerHTML = `<tr><td colspan="4" class="empty-state">No fault entries yet</td></tr>`;
+        faultCount.textContent = '0 entries';
+        return;
+      }
+
+      // Sort by uptime_ms descending (newest first)
+      logs.sort((a, b) => (b.uptime_ms || 0) - (a.uptime_ms || 0));
+
+      faultCount.textContent = `${logs.length} entr${logs.length === 1 ? 'y' : 'ies'}`;
+
+      const rows = logs.map(log => {
+        const sensor = log.sensor || 'unknown';
+        const sensorClass = sensor.toLowerCase().includes('temp') ? 'temperature'
+          : sensor.toLowerCase().includes('fsr') ? 'fsr'
+          : 'displacement';
+        const label = sensor.charAt(0).toUpperCase() + sensor.slice(1);
+
+        const current = log.currentValue != null ? Number(log.currentValue).toFixed(2) : '—';
+        const ref = log.referenceValue != null ? Number(log.referenceValue).toFixed(2) : '—';
+        const dev = log.deviationPercent != null ? Number(log.deviationPercent).toFixed(1) : '—';
+        const time = formatUptime(log.uptime_ms);
+
+        return `<tr>
+          <td><span class="sensor-name ${sensorClass}">${label}</span></td>
+          <td><strong>${current}</strong> <span style="color:#94a3b8;font-size:0.75rem;">(ref ${ref})</span></td>
+          <td><span class="fault-badge">${dev}%</span></td>
+          <td style="color:#64748b;font-size:0.8rem;">${time}</td>
+        </tr>`;
+      }).join('');
+
+      faultTableBody.innerHTML = rows;
+    }
+
+    // ============================================================
+    //  CHART UPDATE
+    // ============================================================
+    function pushChartPoint(tempC, uptimeMs) {
+      if (tempC == null || tempC === -999 || isNaN(tempC)) return;
+
+      const label = formatTime(Date.now());
+
+      chart.data.labels.push(label);
+      chart.data.datasets[0].data.push(Number(tempC));
+
+      if (chart.data.labels.length > MAX_CHART_POINTS) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+      }
+
+      chart.update('none'); // no animation for smooth updates
+    }
+
+    // ============================================================
+    //  FIREBASE LISTENERS
+    // ============================================================
+
+    // ---- Latest sensor reading (most recent entry) ----
+    // The ESP32 uses POST to /sensorReadings.json which creates
+    // a new child with a unique key. We need the *last* one.
+    // Using limitToLast(1) and orderByKey (push IDs are chronological).
+    db.ref('/sensorReadings').orderByKey().limitToLast(1).on('value', (snapshot) => {
+      const val = snapshot.val();
+      if (!val) {
+        renderLatest(null);
+        return;
+      }
+      // val is an object with one key -> the entry
+      const key = Object.keys(val)[0];
+      const data = val[key];
+      renderLatest(data);
+      pushChartPoint(data.temperatureC, data.uptime_ms);
+    }, (error) => {
+      console.error('Sensor readings listener error:', error);
+      statusText.textContent = 'DB read error';
+    });
+
+    // ---- Reference settings (updated when button pressed) ----
+    db.ref('/referenceSettings').on('value', (snapshot) => {
+      const data = snapshot.val();
+      if (!data) return;
+      // Update only the baseline card quickly; the latest sensor
+      // entry will also refresh soon with referenceSet = true.
+      if (data.temperatureC != null) {
+        refSummary.textContent = '✓ Baseline saved';
+        refSummary.style.color = '#166534';
+        refDetail.textContent = `T: ${Number(data.temperatureC).toFixed(1)}°C · FSR: ${data.fsr} · D: ${Number(data.displacementMM).toFixed(1)}mm`;
+        refCard.classList.add('safe');
+      }
+    });
+
+    // ---- Fault logs (all entries) ----
+    db.ref('/faultLogs').on('value', (snapshot) => {
+      const val = snapshot.val();
+      if (!val) {
+        renderFaultLogs([]);
+        return;
+      }
+      // val is an object of entries
+      const logs = Object.keys(val).map(k => val[k]);
+      renderFaultLogs(logs);
+    }, (error) => {
+      console.error('Fault logs listener error:', error);
+    });
+
+    // ============================================================
+    //  CONNECTION STATUS
+    // ============================================================
+    db.ref('.info/connected').on('value', (snapshot) => {
+      const connected = snapshot.val();
+      if (connected) {
+        statusBadge.className = 'status-badge online';
+        statusText.textContent = 'Connected · live';
+      } else {
+        statusBadge.className = 'status-badge offline';
+        statusText.textContent = 'Disconnected';
+      }
+    });
+
+    // ============================================================
+    //  FALLBACK: if no data after 5s, show empty state
+    // ============================================================
+    setTimeout(() => {
+      if (tempValue.textContent === '—') {
+        // no data arrived yet — keep showing placeholders
+      }
+    }, 5000);
+  </script>
+</body>
+</html>
