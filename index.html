@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RCC Predictive Monitor · Pro</title>
+  <title>RCC Predictive Monitor · Health Score Pro</title>
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Firebase SDK (compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
-    /* ---------- GLOBAL DESIGN SYSTEM ---------- */
+    /* ---------- DESIGN SYSTEM ---------- */
     * {
       box-sizing: border-box;
       margin: 0;
@@ -20,7 +20,6 @@
     :root {
       --bg: #f4f8fe;
       --surface: #ffffff;
-      --surface-glow: rgba(255, 255, 255, 0.9);
       --ink: #0b1b3a;
       --ink-soft: #334155;
       --muted: #64748b;
@@ -70,6 +69,8 @@
     .app {
       max-width: 1440px;
       margin: 0 auto;
+      position: relative;
+      z-index: 1;
     }
 
     /* ---------- HEADER ---------- */
@@ -147,6 +148,168 @@
     .status-badge.offline .dot {
       background: #ef4444;
       box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
+    }
+
+    /* ---------- HEALTH SCORE BANNER ---------- */
+    .health-banner {
+      background: linear-gradient(135deg, #0b1b3a 0%, #1e3a5f 100%);
+      border-radius: var(--radius-xl);
+      padding: 24px 32px;
+      margin-bottom: 28px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      box-shadow: var(--shadow-lg);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .health-banner::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -10%;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .health-left {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      flex-wrap: wrap;
+    }
+
+    .health-score-circle {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      position: relative;
+      background: conic-gradient(var(--green) 0deg, var(--green) 360deg);
+      box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.2);
+      transition: all 0.5s ease;
+    }
+
+    .health-score-circle .score-value {
+      font-size: 2.4rem;
+      line-height: 1;
+      color: #0b1b3a;
+      text-shadow: 0 2px 4px rgba(255, 255, 255, 0.3);
+    }
+
+    .health-score-circle .score-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+      color: #1e293b;
+      margin-top: 2px;
+    }
+
+    .health-info h2 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+    }
+
+    .health-info p {
+      font-size: 0.95rem;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .health-info .divider {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #64748b;
+    }
+
+    .health-tags {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .health-tag {
+      padding: 6px 16px;
+      border-radius: 40px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #e2e8f0;
+    }
+
+    .health-tag.good {
+      background: rgba(34, 197, 94, 0.2);
+      border-color: rgba(34, 197, 94, 0.4);
+      color: #86efac;
+    }
+
+    .health-tag.warn {
+      background: rgba(245, 158, 11, 0.2);
+      border-color: rgba(245, 158, 11, 0.4);
+      color: #fcd34d;
+    }
+
+    .health-tag.bad {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+
+    .health-right {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 200px;
+    }
+
+    .health-metric {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      color: #cbd5e1;
+    }
+
+    .health-metric strong {
+      color: white;
+      font-weight: 700;
+    }
+
+    .health-bar {
+      height: 6px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .health-bar-fill {
+      height: 100%;
+      border-radius: 10px;
+      background: linear-gradient(90deg, #22c55e, #4ade80);
+      transition: width 0.6s ease, background 0.3s ease;
     }
 
     /* ---------- CARDS GRID ---------- */
@@ -288,6 +451,31 @@
     .card.reference.safe {
       border: 1px solid #c4b5fd;
       background: linear-gradient(145deg, #f5f3ff, #ffffff);
+    }
+
+    /* Health score per-card */
+    .card-health {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .card-health .bar {
+      flex: 1;
+      height: 5px;
+      border-radius: 10px;
+      background: #eef2f6;
+      overflow: hidden;
+    }
+
+    .card-health .bar-fill {
+      height: 100%;
+      border-radius: 10px;
+      background: var(--green);
+      transition: width 0.4s ease, background 0.3s ease;
     }
 
     /* ---------- ROW: CHART + LOG ---------- */
@@ -507,38 +695,7 @@
       }
     }
 
-    /* ---------- MICRO INTERACTIONS ---------- */
-    .value span {
-      transition: color 0.2s;
-    }
-
-    .value .unit {
-      font-weight: 500;
-    }
-
-    /* Responsive tweaks */
-    @media (max-width: 600px) {
-      body {
-        padding: 16px 12px;
-      }
-      .header {
-        padding: 16px 18px;
-      }
-      .header h1 {
-        font-size: 1.4rem;
-      }
-      .card .value {
-        font-size: 1.9rem;
-      }
-      .panel {
-        padding: 18px 16px;
-      }
-      th, td {
-        padding: 10px 12px;
-      }
-    }
-
-    /* Decorative gradient orb */
+    /* ---------- DECORATIVE ORBS ---------- */
     .orb {
       position: fixed;
       top: -200px;
@@ -563,9 +720,41 @@
       z-index: 0;
     }
 
-    .app {
-      position: relative;
-      z-index: 1;
+    /* ---------- RESPONSIVE ---------- */
+    @media (max-width: 700px) {
+      body {
+        padding: 16px 12px;
+      }
+      .header {
+        padding: 16px 18px;
+      }
+      .header h1 {
+        font-size: 1.4rem;
+      }
+      .health-banner {
+        padding: 20px;
+      }
+      .health-score-circle {
+        width: 80px;
+        height: 80px;
+      }
+      .health-score-circle .score-value {
+        font-size: 1.9rem;
+      }
+      .card .value {
+        font-size: 1.9rem;
+      }
+      .panel {
+        padding: 18px 16px;
+      }
+      th, td {
+        padding: 10px 12px;
+      }
+    }
+
+    /* smooth value transitions */
+    .value span {
+      transition: color 0.2s;
     }
   </style>
 </head>
@@ -586,6 +775,44 @@
       </div>
     </header>
 
+    <!-- HEALTH SCORE BANNER -->
+    <div class="health-banner" id="healthBanner">
+      <div class="health-left">
+        <div class="health-score-circle" id="healthCircle" style="background: conic-gradient(#22c55e 0deg, #22c55e 360deg);">
+          <span class="score-value" id="healthScoreValue">100</span>
+          <span class="score-label">Health</span>
+        </div>
+        <div class="health-info">
+          <h2 id="healthTitle">System Health</h2>
+          <p>
+            <span id="healthSubtitle">All sensors nominal</span>
+            <span class="divider"></span>
+            <span id="healthUpdated">Waiting for data…</span>
+          </p>
+          <div class="health-tags" id="healthTags">
+            <span class="health-tag good">✓ Stable</span>
+          </div>
+        </div>
+      </div>
+      <div class="health-right">
+        <div class="health-metric">
+          <span>Temperature</span>
+          <strong id="healthTemp">—</strong>
+        </div>
+        <div class="health-bar"><div class="health-bar-fill" id="healthTempBar" style="width: 100%;"></div></div>
+        <div class="health-metric">
+          <span>Force (FSR)</span>
+          <strong id="healthFsr">—</strong>
+        </div>
+        <div class="health-bar"><div class="health-bar-fill" id="healthFsrBar" style="width: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa);"></div></div>
+        <div class="health-metric">
+          <span>Displacement</span>
+          <strong id="healthDisp">—</strong>
+        </div>
+        <div class="health-bar"><div class="health-bar-fill" id="healthDispBar" style="width: 100%; background: linear-gradient(90deg, #8b5cf6, #a78bfa);"></div></div>
+      </div>
+    </div>
+
     <!-- Live reading cards -->
     <div class="cards">
       <div class="card" id="tempCard">
@@ -597,6 +824,11 @@
         <div class="sub">
           <span id="tempStatus" class="tag nodata">No data</span>
           <span id="tempRef" style="color:var(--muted-light);">ref —</span>
+        </div>
+        <div class="card-health">
+          <span style="color:var(--muted);">Health</span>
+          <div class="bar"><div class="bar-fill" id="tempHealthBar" style="width: 100%;"></div></div>
+          <span id="tempHealthPct" style="color:var(--muted);">100%</span>
         </div>
       </div>
 
@@ -610,6 +842,11 @@
           <span id="fsrStatus" class="tag nodata">No data</span>
           <span id="fsrRef" style="color:var(--muted-light);">ref —</span>
         </div>
+        <div class="card-health">
+          <span style="color:var(--muted);">Health</span>
+          <div class="bar"><div class="bar-fill" id="fsrHealthBar" style="width: 100%; background: var(--primary);"></div></div>
+          <span id="fsrHealthPct" style="color:var(--muted);">100%</span>
+        </div>
       </div>
 
       <div class="card" id="dispCard">
@@ -622,6 +859,11 @@
           <span id="dispStatus" class="tag nodata">No data</span>
           <span id="dispRef" style="color:var(--muted-light);">ref —</span>
         </div>
+        <div class="card-health">
+          <span style="color:var(--muted);">Health</span>
+          <div class="bar"><div class="bar-fill" id="dispHealthBar" style="width: 100%; background: var(--purple);"></div></div>
+          <span id="dispHealthPct" style="color:var(--muted);">100%</span>
+        </div>
       </div>
 
       <div class="card reference" id="refCard">
@@ -630,6 +872,11 @@
           <span id="refSummary" style="color:var(--ink-soft);">Not set</span>
         </div>
         <div class="sub" id="refDetail" style="color:var(--muted-light); font-weight:500;">Press SET on device</div>
+        <div class="card-health" style="margin-top:12px;">
+          <span style="color:var(--muted);">Threshold</span>
+          <div class="bar"><div class="bar-fill" style="width: 20%; background: var(--amber);"></div></div>
+          <span style="color:var(--muted); font-weight:700;">20%</span>
+        </div>
       </div>
     </div>
 
@@ -672,7 +919,7 @@
 
     <div class="footer">
       <span class="refresh-note">
-        <span class="pulse"></span> Real-time · Firebase Realtime Database
+        <span class="pulse"></span> Real-time · Firebase Realtime Database · Threshold 20%
       </span>
     </div>
   </div>
@@ -694,35 +941,56 @@
     const statusBadge = document.getElementById('statusBadge');
     const statusText = document.getElementById('statusText');
 
+    // cards
     const tempValue = document.getElementById('tempValue');
     const tempStatus = document.getElementById('tempStatus');
     const tempRef = document.getElementById('tempRef');
     const tempCard = document.getElementById('tempCard');
+    const tempHealthBar = document.getElementById('tempHealthBar');
+    const tempHealthPct = document.getElementById('tempHealthPct');
 
     const fsrValue = document.getElementById('fsrValue');
     const fsrStatus = document.getElementById('fsrStatus');
     const fsrRef = document.getElementById('fsrRef');
     const fsrCard = document.getElementById('fsrCard');
+    const fsrHealthBar = document.getElementById('fsrHealthBar');
+    const fsrHealthPct = document.getElementById('fsrHealthPct');
 
     const dispValue = document.getElementById('dispValue');
     const dispStatus = document.getElementById('dispStatus');
     const dispRef = document.getElementById('dispRef');
     const dispCard = document.getElementById('dispCard');
+    const dispHealthBar = document.getElementById('dispHealthBar');
+    const dispHealthPct = document.getElementById('dispHealthPct');
 
     const refSummary = document.getElementById('refSummary');
     const refDetail = document.getElementById('refDetail');
     const refCard = document.getElementById('refCard');
 
+    // health banner
+    const healthCircle = document.getElementById('healthCircle');
+    const healthScoreValue = document.getElementById('healthScoreValue');
+    const healthTitle = document.getElementById('healthTitle');
+    const healthSubtitle = document.getElementById('healthSubtitle');
+    const healthUpdated = document.getElementById('healthUpdated');
+    const healthTags = document.getElementById('healthTags');
+    const healthTemp = document.getElementById('healthTemp');
+    const healthFsr = document.getElementById('healthFsr');
+    const healthDisp = document.getElementById('healthDisp');
+    const healthTempBar = document.getElementById('healthTempBar');
+    const healthFsrBar = document.getElementById('healthFsrBar');
+    const healthDispBar = document.getElementById('healthDispBar');
+
+    // logs
     const faultTableBody = document.getElementById('faultTableBody');
     const faultCount = document.getElementById('faultCount');
 
     // ============================================================
-    //  CHART SETUP (Temperature over time)
+    //  CHART SETUP
     // ============================================================
     const ctx = document.getElementById('tempChart').getContext('2d');
     const MAX_CHART_POINTS = 60;
 
-    // gradient for chart fill
     const gradient = ctx.createLinearGradient(0, 0, 0, 260);
     gradient.addColorStop(0, 'rgba(37, 99, 235, 0.18)');
     gradient.addColorStop(1, 'rgba(37, 99, 235, 0.01)');
@@ -808,11 +1076,21 @@
       return `${sec}s`;
     }
 
+    // Health score calculation based on 20% threshold
+    // If deviation is 0% => health 100%
+    // If deviation is 20% or more => health 0% (and fault)
+    function calcHealth(deviationPercent) {
+      if (deviationPercent == null || isNaN(deviationPercent)) return 100;
+      const dev = Math.min(Math.abs(deviationPercent), 20);
+      return Math.round(100 - (dev / 20) * 100);
+    }
+
     // ============================================================
     //  RENDER LATEST SENSOR SNAPSHOT
     // ============================================================
     function renderLatest(data) {
       if (!data) {
+        // reset everything
         tempValue.textContent = '—';
         fsrValue.textContent = '—';
         dispValue.textContent = '—';
@@ -831,91 +1109,139 @@
         refSummary.textContent = 'Not set';
         refDetail.textContent = 'Press SET on device';
         refCard.classList.remove('alert', 'safe');
+
+        // reset health
+        healthScoreValue.textContent = '100';
+        healthCircle.style.background = 'conic-gradient(#22c55e 0deg, #22c55e 360deg)';
+        healthTitle.textContent = 'System Health';
+        healthSubtitle.textContent = 'Waiting for data…';
+        healthTags.innerHTML = '<span class="health-tag good">✓ Stable</span>';
+        healthTemp.textContent = '—';
+        healthFsr.textContent = '—';
+        healthDisp.textContent = '—';
+        healthTempBar.style.width = '100%';
+        healthFsrBar.style.width = '100%';
+        healthDispBar.style.width = '100%';
+        tempHealthBar.style.width = '100%';
+        tempHealthPct.textContent = '100%';
+        fsrHealthBar.style.width = '100%';
+        fsrHealthPct.textContent = '100%';
+        dispHealthBar.style.width = '100%';
+        dispHealthPct.textContent = '100%';
         return;
       }
 
-      // --- Temperature ---
+      // ---------- TEMPERATURE ----------
       const tempValid = data.temperatureValid !== false && data.temperatureC !== -999;
       tempValue.textContent = tempValid ? Number(data.temperatureC).toFixed(1) : '—';
       const tempFault = data.temperatureFault === true;
-      const tempDev = data.referenceTemperatureC
-        ? Math.abs((data.temperatureC - data.referenceTemperatureC) / data.referenceTemperatureC * 100).toFixed(1)
-        : null;
+      let tempDev = null;
+      if (data.referenceSet && data.referenceTemperatureC) {
+        tempDev = Math.abs((data.temperatureC - data.referenceTemperatureC) / data.referenceTemperatureC * 100);
+      }
+      const tempHealth = calcHealth(tempDev);
 
       if (!tempValid) {
         tempStatus.textContent = 'Sensor error';
         tempStatus.className = 'tag nodata';
         tempCard.classList.remove('alert', 'safe');
         tempCard.classList.add('alert');
+        tempHealthBar.style.width = '0%';
+        tempHealthBar.style.background = 'var(--red)';
+        tempHealthPct.textContent = '0%';
       } else if (tempFault) {
-        tempStatus.textContent = `⚠ Fault (${tempDev}%)`;
+        tempStatus.textContent = `⚠ Fault (${tempDev ? tempDev.toFixed(1) : '—'}%)`;
         tempStatus.className = 'tag fault';
         tempCard.classList.add('alert');
         tempCard.classList.remove('safe');
+        tempHealthBar.style.width = tempHealth + '%';
+        tempHealthBar.style.background = tempHealth > 60 ? 'var(--amber)' : 'var(--red)';
+        tempHealthPct.textContent = tempHealth + '%';
       } else {
         tempStatus.textContent = 'Normal';
         tempStatus.className = 'tag normal';
         tempCard.classList.add('safe');
         tempCard.classList.remove('alert');
+        tempHealthBar.style.width = tempHealth + '%';
+        tempHealthBar.style.background = tempHealth > 80 ? 'var(--green)' : 'var(--amber)';
+        tempHealthPct.textContent = tempHealth + '%';
       }
 
-      if (data.referenceSet) {
-        tempRef.textContent = `ref ${Number(data.referenceTemperatureC).toFixed(1)}°C`;
-      } else {
-        tempRef.textContent = 'ref —';
-      }
+      tempRef.textContent = data.referenceSet ? `ref ${Number(data.referenceTemperatureC).toFixed(1)}°C` : 'ref —';
 
-      // --- FSR ---
+      // ---------- FSR ----------
       fsrValue.textContent = data.fsr ?? '—';
       const fsrFault = data.fsrFault === true;
-      const fsrDev = data.referenceFSR
-        ? Math.abs((data.fsr - data.referenceFSR) / data.referenceFSR * 100).toFixed(1)
-        : null;
+      let fsrDev = null;
+      if (data.referenceSet && data.referenceFSR) {
+        fsrDev = Math.abs((data.fsr - data.referenceFSR) / data.referenceFSR * 100);
+      }
+      const fsrHealth = calcHealth(fsrDev);
 
       if (fsrFault) {
-        fsrStatus.textContent = `⚠ Fault (${fsrDev}%)`;
+        fsrStatus.textContent = `⚠ Fault (${fsrDev ? fsrDev.toFixed(1) : '—'}%)`;
         fsrStatus.className = 'tag fault';
         fsrCard.classList.add('alert');
         fsrCard.classList.remove('safe');
+        fsrHealthBar.style.width = fsrHealth + '%';
+        fsrHealthBar.style.background = fsrHealth > 60 ? 'var(--amber)' : 'var(--red)';
+        fsrHealthPct.textContent = fsrHealth + '%';
       } else if (data.referenceSet) {
         fsrStatus.textContent = 'Normal';
         fsrStatus.className = 'tag normal';
         fsrCard.classList.add('safe');
         fsrCard.classList.remove('alert');
+        fsrHealthBar.style.width = fsrHealth + '%';
+        fsrHealthBar.style.background = fsrHealth > 80 ? 'var(--green)' : 'var(--amber)';
+        fsrHealthPct.textContent = fsrHealth + '%';
       } else {
         fsrStatus.textContent = 'Waiting';
         fsrStatus.className = 'tag nodata';
         fsrCard.classList.remove('alert', 'safe');
+        fsrHealthBar.style.width = '100%';
+        fsrHealthBar.style.background = '#e2e8f0';
+        fsrHealthPct.textContent = '—';
       }
 
       fsrRef.textContent = data.referenceSet ? `ref ${data.referenceFSR}` : 'ref —';
 
-      // --- Displacement ---
+      // ---------- DISPLACEMENT ----------
       dispValue.textContent = data.displacementMM != null ? Number(data.displacementMM).toFixed(1) : '—';
       const dispFault = data.displacementFault === true;
-      const dispDev = data.referenceDisplacementMM
-        ? Math.abs((data.displacementMM - data.referenceDisplacementMM) / data.referenceDisplacementMM * 100).toFixed(1)
-        : null;
+      let dispDev = null;
+      if (data.referenceSet && data.referenceDisplacementMM) {
+        dispDev = Math.abs((data.displacementMM - data.referenceDisplacementMM) / data.referenceDisplacementMM * 100);
+      }
+      const dispHealth = calcHealth(dispDev);
 
       if (dispFault) {
-        dispStatus.textContent = `⚠ Fault (${dispDev}%)`;
+        dispStatus.textContent = `⚠ Fault (${dispDev ? dispDev.toFixed(1) : '—'}%)`;
         dispStatus.className = 'tag fault';
         dispCard.classList.add('alert');
         dispCard.classList.remove('safe');
+        dispHealthBar.style.width = dispHealth + '%';
+        dispHealthBar.style.background = dispHealth > 60 ? 'var(--amber)' : 'var(--red)';
+        dispHealthPct.textContent = dispHealth + '%';
       } else if (data.referenceSet) {
         dispStatus.textContent = 'Normal';
         dispStatus.className = 'tag normal';
         dispCard.classList.add('safe');
         dispCard.classList.remove('alert');
+        dispHealthBar.style.width = dispHealth + '%';
+        dispHealthBar.style.background = dispHealth > 80 ? 'var(--green)' : 'var(--amber)';
+        dispHealthPct.textContent = dispHealth + '%';
       } else {
         dispStatus.textContent = 'Waiting';
         dispStatus.className = 'tag nodata';
         dispCard.classList.remove('alert', 'safe');
+        dispHealthBar.style.width = '100%';
+        dispHealthBar.style.background = '#e2e8f0';
+        dispHealthPct.textContent = '—';
       }
 
       dispRef.textContent = data.referenceSet ? `ref ${Number(data.referenceDisplacementMM).toFixed(1)} mm` : 'ref —';
 
-      // --- Baseline card ---
+      // ---------- BASELINE CARD ----------
       if (data.referenceSet) {
         refSummary.textContent = '✓ Baseline saved';
         refSummary.style.color = '#166534';
@@ -928,10 +1254,92 @@
         refDetail.textContent = 'Press SET on device';
         refCard.classList.remove('safe', 'alert');
       }
+
+      // ---------- HEALTH BANNER UPDATE ----------
+      updateHealthBanner(data, tempDev, fsrDev, dispDev, tempHealth, fsrHealth, dispHealth);
     }
 
     // ============================================================
-    //  RENDER FAULT LOGS (newest first)
+    //  UPDATE HEALTH BANNER
+    // ============================================================
+    function updateHealthBanner(data, tempDev, fsrDev, dispDev, tempHealth, fsrHealth, dispHealth) {
+      // Overall health = average of available healths
+      const healths = [];
+      if (data.referenceSet && data.temperatureValid !== false && data.temperatureC !== -999) healths.push(tempHealth);
+      if (data.referenceSet && data.fsr != null) healths.push(fsrHealth);
+      if (data.referenceSet && data.displacementMM != null) healths.push(dispHealth);
+
+      let overallHealth = 100;
+      if (healths.length > 0) {
+        overallHealth = Math.round(healths.reduce((a, b) => a + b, 0) / healths.length);
+      }
+
+      healthScoreValue.textContent = overallHealth;
+
+      // Update circle conic gradient
+      const angle = (overallHealth / 100) * 360;
+      let color = '#22c55e';
+      if (overallHealth < 60) color = '#ef4444';
+      else if (overallHealth < 80) color = '#f59e0b';
+
+      healthCircle.style.background = `conic-gradient(${color} 0deg, ${color} ${angle}deg, #1e3a5f ${angle}deg, #1e3a5f 360deg)`;
+      healthCircle.style.boxShadow = `0 0 0 6px ${color}33`;
+
+      // Title and subtitle
+      if (overallHealth >= 90) {
+        healthTitle.textContent = 'Excellent Health';
+        healthSubtitle.textContent = 'All sensors nominal — system stable';
+      } else if (overallHealth >= 70) {
+        healthTitle.textContent = 'Good Health';
+        healthSubtitle.textContent = 'Minor deviations detected — monitor closely';
+      } else if (overallHealth >= 50) {
+        healthTitle.textContent = 'Warning';
+        healthSubtitle.textContent = 'Significant deviations — maintenance recommended';
+      } else {
+        healthTitle.textContent = 'Critical';
+        healthSubtitle.textContent = 'Immediate attention required';
+      }
+
+      // Tags
+      let tagsHTML = '';
+      if (overallHealth >= 90) tagsHTML = '<span class="health-tag good">✓ Stable</span>';
+      else if (overallHealth >= 70) tagsHTML = '<span class="health-tag warn">⚠ Minor deviations</span>';
+      else tagsHTML = '<span class="health-tag bad">⚠ Critical</span>';
+
+      if (data.referenceSet) {
+        tagsHTML += '<span class="health-tag">Baseline set</span>';
+      } else {
+        tagsHTML += '<span class="health-tag">No baseline</span>';
+      }
+      healthTags.innerHTML = tagsHTML;
+
+      // Last updated
+      healthUpdated.textContent = 'Updated ' + formatTime(Date.now());
+
+      // Right side metrics
+      const tempDisplay = data.temperatureValid !== false && data.temperatureC !== -999
+        ? Number(data.temperatureC).toFixed(1) + '°C'
+        : '—';
+      healthTemp.textContent = tempDisplay;
+      healthFsr.textContent = data.fsr != null ? data.fsr + ' ADC' : '—';
+      healthDisp.textContent = data.displacementMM != null ? Number(data.displacementMM).toFixed(1) + ' mm' : '—';
+
+      // Bar widths
+      healthTempBar.style.width = (data.referenceSet ? tempHealth : 100) + '%';
+      healthTempBar.style.background = tempHealth > 80 ? 'linear-gradient(90deg, #22c55e, #4ade80)' :
+        tempHealth > 60 ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'linear-gradient(90deg, #ef4444, #f87171)';
+
+      healthFsrBar.style.width = (data.referenceSet ? fsrHealth : 100) + '%';
+      healthFsrBar.style.background = fsrHealth > 80 ? 'linear-gradient(90deg, #3b82f6, #60a5fa)' :
+        fsrHealth > 60 ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'linear-gradient(90deg, #ef4444, #f87171)';
+
+      healthDispBar.style.width = (data.referenceSet ? dispHealth : 100) + '%';
+      healthDispBar.style.background = dispHealth > 80 ? 'linear-gradient(90deg, #8b5cf6, #a78bfa)' :
+        dispHealth > 60 ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'linear-gradient(90deg, #ef4444, #f87171)';
+    }
+
+    // ============================================================
+    //  RENDER FAULT LOGS
     // ============================================================
     function renderFaultLogs(logs) {
       if (!logs || logs.length === 0) {
@@ -970,7 +1378,7 @@
     // ============================================================
     //  CHART UPDATE
     // ============================================================
-    function pushChartPoint(tempC, uptimeMs) {
+    function pushChartPoint(tempC) {
       if (tempC == null || tempC === -999 || isNaN(tempC)) return;
 
       const label = formatTime(Date.now());
@@ -1000,7 +1408,7 @@
       const key = Object.keys(val)[0];
       const data = val[key];
       renderLatest(data);
-      pushChartPoint(data.temperatureC, data.uptime_ms);
+      pushChartPoint(data.temperatureC);
     }, (error) => {
       console.error('Sensor readings listener error:', error);
       statusText.textContent = 'DB read error';
@@ -1042,13 +1450,6 @@
         statusText.textContent = 'Disconnected';
       }
     });
-
-    // Fallback
-    setTimeout(() => {
-      if (tempValue.textContent === '—') {
-        // keep placeholders
-      }
-    }, 5000);
   </script>
 </body>
 </html>
