@@ -3,892 +3,815 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RCC Predictive Monitor — Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <title>RCC Predictive Monitor</title>
+  <!-- Chart.js for the real-time line chart -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- Firebase SDK (compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
-    :root {
-      --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-      --bg-base: #f1f5f9;
-      --bg-surface: #ffffff;
-      --bg-subtle: #f8fafc;
-      --bg-hover: #f1f5f9;
-      --text-primary: #0f172a;
-      --text-secondary: #475569;
-      --text-tertiary: #94a3b8;
-      --border-light: #e2e8f0;
-      --border-medium: #cbd5e1;
-      --brand-primary: #1e40af;
-      --brand-accent: #0ea5e9;
-      --success: #10b981;
-      --success-bg: #ecfdf5;
-      --success-text: #065f46;
-      --warning: #f59e0b;
-      --warning-bg: #fffbeb;
-      --warning-text: #92400e;
-      --danger: #ef4444;
-      --danger-bg: #fef2f2;
-      --danger-text: #991b1b;
-      --info-bg: #eff6ff;
-      --info-text: #1e40af;
-      --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
-      --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
-      --shadow-lg: 0 12px 32px rgba(0,0,0,0.08);
-      --radius-md: 12px;
-      --radius-lg: 16px;
-      --transition: 200ms cubic-bezier(0.4,0,0.2,1);
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
-    [data-theme="dark"] {
-      --bg-base: #0b1120;
-      --bg-surface: #111827;
-      --bg-subtle: #0f172a;
-      --bg-hover: #1e293b;
-      --text-primary: #f1f5f9;
-      --text-secondary: #cbd5e1;
-      --text-tertiary: #64748b;
-      --border-light: #1e293b;
-      --border-medium: #334155;
-      --brand-primary: #60a5fa;
-      --success-bg: #064e3b;
-      --success-text: #6ee7b7;
-      --warning-bg: #451a03;
-      --warning-text: #fcd34d;
-      --danger-bg: #450a0a;
-      --danger-text: #fca5a5;
-      --info-bg: #172554;
-      --info-text: #93c5fd;
-      --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
-      --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
-      --shadow-lg: 0 12px 32px rgba(0,0,0,0.5);
-    }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      font-family: var(--font-sans);
-      background: var(--bg-base);
-      color: var(--text-primary);
-      min-height: 100vh;
-      transition: background-color var(--transition), color var(--transition);
-      line-height: 1.5;
+      font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+      background: #f3f6fc;
+      color: #1a1f2e;
+      padding: 16px;
     }
-    .app { max-width: 1440px; margin: 0 auto; padding: 24px 28px 40px; }
 
-    /* TOPBAR */
-    .topbar {
-      display: flex; align-items: center; justify-content: space-between;
-      flex-wrap: wrap; gap: 16px; padding: 16px 24px;
-      background: var(--bg-surface); border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-sm); border: 1px solid var(--border-light);
-      margin-bottom: 24px;
+    .app {
+      max-width: 1400px;
+      margin: 0 auto;
     }
-    .brand { display: flex; align-items: center; gap: 14px; }
-    .brand-icon {
-      width: 44px; height: 44px; border-radius: var(--radius-md);
-      background: linear-gradient(135deg, var(--brand-primary), var(--brand-accent));
-      display: flex; align-items: center; justify-content: center;
-      color: #fff; font-size: 1.4rem; font-weight: 700;
-      box-shadow: 0 4px 12px rgba(30,64,175,0.3); flex-shrink: 0;
-    }
-    .brand-text h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.02em; }
-    .brand-text p { font-size: 0.78rem; color: var(--text-tertiary); font-weight: 500; margin-top: 2px; }
-    .topbar-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .status-pill {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 8px 16px; border-radius: 100px;
-      font-size: 0.82rem; font-weight: 600;
-      background: var(--bg-subtle); color: var(--text-secondary);
-      border: 1px solid var(--border-light); transition: all var(--transition);
-    }
-    .status-pill .dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: var(--text-tertiary); flex-shrink: 0;
-    }
-    .status-pill.online { background: var(--success-bg); color: var(--success-text); border-color: transparent; }
-    .status-pill.online .dot {
-      background: var(--success);
-      box-shadow: 0 0 0 3px rgba(16,185,129,0.2);
-      animation: pulse-dot 2s infinite;
-    }
-    .status-pill.offline { background: var(--danger-bg); color: var(--danger-text); border-color: transparent; }
-    .status-pill.offline .dot { background: var(--danger); box-shadow: 0 0 0 3px rgba(239,68,68,0.2); }
-    @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.5} }
-    .icon-btn {
-      width: 42px; height: 42px; border-radius: var(--radius-md);
-      border: 1px solid var(--border-light); background: var(--bg-surface);
-      color: var(--text-secondary); display: flex; align-items: center;
-      justify-content: center; cursor: pointer; transition: all var(--transition);
-      font-size: 1.15rem;
-    }
-    .icon-btn:hover { background: var(--bg-hover); border-color: var(--border-medium); transform: translateY(-1px); }
 
-    /* KPI CARDS */
-    .kpi-grid {
+    /* Header */
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      background: #ffffff;
+      padding: 16px 24px;
+      border-radius: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+      margin-bottom: 20px;
+    }
+
+    .header h1 {
+      font-size: 1.6rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: #0b1c3f;
+    }
+
+    .header h1 span {
+      color: #2563eb;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 40px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      background: #eef2f6;
+      color: #334155;
+    }
+
+    .status-badge .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #94a3b8;
+    }
+
+    .status-badge.online .dot {
+      background: #22c55e;
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+    }
+
+    .status-badge.offline .dot {
+      background: #ef4444;
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+    }
+
+    /* Cards grid */
+    .cards {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 20px; margin-bottom: 24px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
     }
-    .kpi-card {
-      position: relative; background: var(--bg-surface);
-      border: 1px solid var(--border-light); border-radius: var(--radius-lg);
-      padding: 22px 24px; box-shadow: var(--shadow-sm);
-      transition: all var(--transition); overflow: hidden;
-    }
-    .kpi-card::before {
-      content: ''; position: absolute; top: 0; left: 0; right: 0;
-      height: 3px; background: var(--border-light); transition: background var(--transition);
-    }
-    .kpi-card.state-safe::before { background: var(--success); }
-    .kpi-card.state-alert::before { background: var(--danger); }
-    .kpi-card.state-nodata::before { background: var(--text-tertiary); }
-    .kpi-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
-    .kpi-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-    .kpi-label {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.06em; color: var(--text-tertiary);
-    }
-    .kpi-label svg { width: 15px; height: 15px; stroke-width: 2.2; }
-    .kpi-badge {
-      font-size: 0.68rem; font-weight: 700; padding: 3px 10px;
-      border-radius: 100px; text-transform: uppercase; letter-spacing: 0.03em;
-    }
-    .kpi-badge.normal { background: var(--success-bg); color: var(--success-text); }
-    .kpi-badge.fault { background: var(--danger-bg); color: var(--danger-text); }
-    .kpi-badge.nodata { background: var(--bg-subtle); color: var(--text-tertiary); }
-    .kpi-value {
-      font-size: 2.4rem; font-weight: 800; letter-spacing: -0.03em;
-      line-height: 1; color: var(--text-primary);
-      display: flex; align-items: baseline; gap: 4px;
-      margin-bottom: 10px; font-variant-numeric: tabular-nums;
-    }
-    .kpi-value .unit { font-size: 0.95rem; font-weight: 600; color: var(--text-tertiary); }
-    .kpi-meta {
-      display: flex; align-items: center; justify-content: space-between;
-      font-size: 0.8rem; color: var(--text-tertiary); gap: 8px;
-    }
-    .kpi-meta .ref-value { font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
-    .kpi-progress {
-      margin-top: 12px; height: 5px; background: var(--bg-subtle);
-      border-radius: 100px; overflow: hidden;
-    }
-    .kpi-progress-bar {
-      height: 100%; border-radius: 100px; background: var(--text-tertiary);
-      width: 0%; transition: width 400ms cubic-bezier(0.4,0,0.2,1);
-    }
-    .kpi-progress-bar.safe { background: var(--success); }
-    .kpi-progress-bar.warn { background: var(--warning); }
-    .kpi-progress-bar.danger { background: var(--danger); }
-    .ref-card { background: linear-gradient(135deg, var(--bg-surface), var(--bg-subtle)); }
-    .ref-card .kpi-value { font-size: 1.15rem; font-weight: 600; line-height: 1.4; }
-    .ref-details {
-      display: flex; flex-wrap: wrap; gap: 6px 16px;
-      margin-top: 10px; font-size: 0.78rem; color: var(--text-tertiary);
-    }
-    .ref-details span strong { color: var(--text-secondary); font-weight: 700; }
 
-    /* MAIN GRID */
-    .main-grid {
-      display: grid; grid-template-columns: 1.4fr 1fr;
-      gap: 20px; margin-bottom: 24px;
+    .card {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 20px 22px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+      border: 1px solid #eef2f6;
     }
-    @media (max-width: 1080px) { .main-grid { grid-template-columns: 1fr; } }
+
+    .card .label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+
+    .card .value {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1.1;
+      color: #0b1c3f;
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+
+    .card .value .unit {
+      font-size: 1rem;
+      font-weight: 500;
+      color: #64748b;
+    }
+
+    .card .sub {
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .card .sub .tag {
+      padding: 2px 10px;
+      border-radius: 30px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .tag.normal {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .tag.fault {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .tag.nodata {
+      background: #f1f5f9;
+      color: #475569;
+    }
+
+    .card.alert {
+      border-left: 6px solid #ef4444;
+      background: #fff8f8;
+    }
+
+    .card.safe {
+      border-left: 6px solid #22c55e;
+    }
+
+    .card.reference {
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+    }
+
+    /* Two column layout for chart + logs */
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .row {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .panel {
-      background: var(--bg-surface); border: 1px solid var(--border-light);
-      border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
-      display: flex; flex-direction: column; overflow: hidden;
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 18px 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+      border: 1px solid #eef2f6;
+      display: flex;
+      flex-direction: column;
     }
-    .panel-head {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 18px 22px; border-bottom: 1px solid var(--border-light);
-      gap: 12px; flex-wrap: wrap;
-    }
-    .panel-title {
-      display: flex; align-items: center; gap: 10px;
-      font-size: 0.95rem; font-weight: 700; letter-spacing: -0.01em;
-    }
-    .panel-title svg { width: 18px; height: 18px; stroke-width: 2.2; color: var(--brand-primary); }
-    .panel-actions { display: flex; align-items: center; gap: 8px; }
-    .pill-btn {
-      font-size: 0.72rem; font-weight: 700; padding: 5px 12px;
-      border-radius: 100px; border: 1px solid var(--border-light);
-      background: var(--bg-subtle); color: var(--text-secondary);
-      cursor: pointer; transition: all var(--transition);
-      text-transform: uppercase; letter-spacing: 0.03em;
-    }
-    .pill-btn:hover { background: var(--bg-hover); border-color: var(--border-medium); }
-    .pill-btn.active { background: var(--brand-primary); border-color: var(--brand-primary); color: #fff; }
-    .count-badge {
-      font-size: 0.72rem; font-weight: 700; padding: 5px 12px;
-      border-radius: 100px; background: var(--danger-bg); color: var(--danger-text);
-    }
-    .count-badge.zero { background: var(--bg-subtle); color: var(--text-tertiary); }
-    .chart-wrap { position: relative; padding: 16px 16px 8px; height: 320px; flex: 1; }
-    .log-wrap { flex: 1; overflow-y: auto; max-height: 360px; }
-    .log-wrap::-webkit-scrollbar { width: 6px; }
-    .log-wrap::-webkit-scrollbar-thumb { background: var(--border-medium); border-radius: 100px; }
-    .log-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-    .log-table thead { position: sticky; top: 0; background: var(--bg-subtle); z-index: 2; }
-    .log-table th {
-      text-align: left; padding: 11px 16px; font-weight: 700;
-      font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em;
-      color: var(--text-tertiary); border-bottom: 1px solid var(--border-light);
-    }
-    .log-table td { padding: 12px 16px; border-bottom: 1px solid var(--border-light); color: var(--text-secondary); }
-    .log-table tbody tr:hover { background: var(--bg-hover); }
-    .sensor-chip {
-      display: inline-flex; align-items: center; gap: 6px;
-      font-weight: 700; font-size: 0.72rem; padding: 4px 11px;
-      border-radius: 100px; text-transform: capitalize;
-    }
-    .sensor-chip::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-    .sensor-chip.temperature { background: var(--warning-bg); color: var(--warning-text); }
-    .sensor-chip.fsr { background: var(--info-bg); color: var(--info-text); }
-    .sensor-chip.displacement { background: #f3e8ff; color: #6b21a8; }
-    [data-theme="dark"] .sensor-chip.displacement { background: #2e1065; color: #d8b4fe; }
-    .value-cell { font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
-    .value-cell .ref { font-weight: 500; color: var(--text-tertiary); font-size: 0.75rem; }
-    .deviation-chip {
-      display: inline-block; font-weight: 700; font-size: 0.72rem;
-      padding: 3px 10px; border-radius: 100px;
-      background: var(--danger-bg); color: var(--danger-text);
-    }
-    .time-cell { font-size: 0.75rem; color: var(--text-tertiary); white-space: nowrap; }
-    .empty-state { padding: 48px 20px; text-align: center; color: var(--text-tertiary); font-size: 0.85rem; }
-    .empty-state svg { width: 36px; height: 36px; margin-bottom: 10px; opacity: 0.4; }
 
-    /* FOOTER */
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .panel-header h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #0b1c3f;
+    }
+
+    .panel-header .badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 30px;
+      background: #eef2f6;
+      color: #475569;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 260px;
+      width: 100%;
+    }
+
+    /* Log table */
+    .log-scroll {
+      max-height: 320px;
+      overflow-y: auto;
+      border-radius: 12px;
+      border: 1px solid #eef2f6;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      background: #f8fafc;
+      z-index: 2;
+    }
+
+    th {
+      text-align: left;
+      padding: 10px 12px;
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: #64748b;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #f1f5f9;
+      color: #1e293b;
+      vertical-align: middle;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .sensor-name {
+      font-weight: 600;
+      font-size: 0.8rem;
+      padding: 2px 10px;
+      border-radius: 30px;
+      display: inline-block;
+    }
+
+    .sensor-name.temperature {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .sensor-name.fsr {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .sensor-name.displacement {
+      background: #f3e8ff;
+      color: #6b21a8;
+    }
+
+    .fault-badge {
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 2px 10px;
+      border-radius: 30px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .empty-state {
+      padding: 32px 16px;
+      text-align: center;
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
     .footer {
-      display: flex; align-items: center; justify-content: space-between;
-      flex-wrap: wrap; gap: 12px; padding: 16px 24px;
-      background: var(--bg-surface); border: 1px solid var(--border-light);
-      border-radius: var(--radius-lg); font-size: 0.78rem; color: var(--text-tertiary);
-    }
-    .footer-left { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-    .footer-item { display: flex; align-items: center; gap: 6px; }
-    .footer-item .live-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: var(--success); animation: pulse-dot 2s infinite;
-    }
-    .footer-item strong { color: var(--text-secondary); font-weight: 700; }
-
-    /* DEBUG PANEL */
-    .debug-panel {
-      background: var(--bg-surface); border: 1px solid var(--border-light);
-      border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
-      margin-top: 20px; overflow: hidden;
-    }
-    .debug-head {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 20px; border-bottom: 1px solid var(--border-light);
-      font-size: 0.85rem; font-weight: 700;
-    }
-    .debug-head .debug-status {
-      font-size: 0.7rem; font-weight: 700; padding: 4px 10px;
-      border-radius: 100px; text-transform: uppercase;
-    }
-    .debug-status.ok { background: var(--success-bg); color: var(--success-text); }
-    .debug-status.err { background: var(--danger-bg); color: var(--danger-text); }
-    .debug-status.warn { background: var(--warning-bg); color: var(--warning-text); }
-    .debug-body {
-      padding: 16px 20px; font-family: 'SF Mono', 'Consolas', monospace;
-      font-size: 0.75rem; line-height: 1.7; max-height: 300px; overflow-y: auto;
-      background: var(--bg-subtle); color: var(--text-secondary);
-    }
-    .debug-line { display: flex; gap: 10px; padding: 2px 0; }
-    .debug-line .ts { color: var(--text-tertiary); flex-shrink: 0; }
-    .debug-line .msg { word-break: break-all; }
-    .debug-line.ok .msg { color: var(--success-text); }
-    .debug-line.err .msg { color: var(--danger-text); }
-    .debug-line.info .msg { color: var(--info-text); }
-    .debug-toggle {
-      font-size: 0.7rem; font-weight: 700; padding: 4px 12px;
-      border-radius: 100px; border: 1px solid var(--border-light);
-      background: var(--bg-subtle); color: var(--text-secondary); cursor: pointer;
+      text-align: center;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      padding: 16px 0 8px;
     }
 
-    /* TOAST */
-    .toast-container {
-      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
-      display: flex; flex-direction: column; gap: 10px;
+    .refresh-note {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
-    .toast {
-      min-width: 280px; max-width: 400px; padding: 14px 18px;
-      border-radius: var(--radius-md); background: var(--bg-surface);
-      border: 1px solid var(--border-light); box-shadow: var(--shadow-lg);
-      display: flex; align-items: flex-start; gap: 12px;
-      animation: toast-in 300ms cubic-bezier(0.4,0,0.2,1);
-      font-size: 0.82rem;
-    }
-    .toast.leaving { animation: toast-out 250ms forwards; }
-    .toast-icon { width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px; }
-    .toast-icon.danger { color: var(--danger); }
-    .toast-icon.success { color: var(--success); }
-    .toast-icon.info { color: var(--info-text); }
-    .toast-content { flex: 1; }
-    .toast-content strong { display: block; font-weight: 700; margin-bottom: 2px; }
-    .toast-content span { color: var(--text-secondary); font-size: 0.78rem; }
-    @keyframes toast-in { from { opacity: 0; transform: translateX(30px) scale(0.95); } to { opacity: 1; transform: translateX(0) scale(1); } }
-    @keyframes toast-out { from { opacity: 1; } to { opacity: 0; transform: translateX(30px) scale(0.95); } }
 
-    @media (max-width: 640px) {
-      .app { padding: 16px 14px 32px; }
-      .kpi-value { font-size: 2rem; }
-      .chart-wrap { height: 260px; }
+    .pulse {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.4;
+        transform: scale(0.9);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
     }
   </style>
 </head>
 <body>
   <div class="app">
-    <header class="topbar">
-      <div class="brand">
-        <div class="brand-icon">R</div>
-        <div class="brand-text">
-          <h1>RCC Predictive Monitor</h1>
-          <p>Real-time condition monitoring &amp; fault detection</p>
-        </div>
-      </div>
-      <div class="topbar-actions">
-        <div id="connPill" class="status-pill offline">
-          <span class="dot"></span>
-          <span id="connText">Connecting…</span>
-        </div>
-        <button id="themeToggle" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">
-          <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="4"></circle>
-            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
-          </svg>
-        </button>
+
+    <!-- Header -->
+    <header class="header">
+      <h1>⚙️ RCC <span>Predictive Monitor</span></h1>
+      <div id="statusBadge" class="status-badge offline">
+        <span class="dot"></span>
+        <span id="statusText">Connecting…</span>
       </div>
     </header>
 
-    <section class="kpi-grid">
-      <article class="kpi-card state-nodata" id="tempCard">
-        <div class="kpi-head">
-          <span class="kpi-label">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path>
-            </svg>
-            Temperature
-          </span>
-          <span id="tempBadge" class="kpi-badge nodata">No data</span>
+    <!-- Live reading cards -->
+    <div class="cards">
+      <div class="card" id="tempCard">
+        <div class="label">Temperature</div>
+        <div class="value">
+          <span id="tempValue">—</span>
+          <span class="unit">°C</span>
         </div>
-        <div class="kpi-value"><span id="tempValue">—</span><span class="unit">°C</span></div>
-        <div class="kpi-meta"><span class="ref-label">Baseline</span><span id="tempRef" class="ref-value">—</span></div>
-        <div class="kpi-progress"><div id="tempProgress" class="kpi-progress-bar"></div></div>
-      </article>
+        <div class="sub">
+          <span id="tempStatus" class="tag nodata">No data</span>
+          <span id="tempRef" style="color:#94a3b8;">ref —</span>
+        </div>
+      </div>
 
-      <article class="kpi-card state-nodata" id="fsrCard">
-        <div class="kpi-head">
-          <span class="kpi-label">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-            </svg>
-            Force (FSR)
-          </span>
-          <span id="fsrBadge" class="kpi-badge nodata">No data</span>
+      <div class="card" id="fsrCard">
+        <div class="label">Force (FSR)</div>
+        <div class="value">
+          <span id="fsrValue">—</span>
+          <span class="unit">ADC</span>
         </div>
-        <div class="kpi-value"><span id="fsrValue">—</span><span class="unit">ADC</span></div>
-        <div class="kpi-meta"><span class="ref-label">Baseline</span><span id="fsrRef" class="ref-value">—</span></div>
-        <div class="kpi-progress"><div id="fsrProgress" class="kpi-progress-bar"></div></div>
-      </article>
+        <div class="sub">
+          <span id="fsrStatus" class="tag nodata">No data</span>
+          <span id="fsrRef" style="color:#94a3b8;">ref —</span>
+        </div>
+      </div>
 
-      <article class="kpi-card state-nodata" id="dispCard">
-        <div class="kpi-head">
-          <span class="kpi-label">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 12h18M3 12l4-4M3 12l4 4M21 12l-4-4M21 12l-4 4"></path>
-            </svg>
-            Displacement
-          </span>
-          <span id="dispBadge" class="kpi-badge nodata">No data</span>
+      <div class="card" id="dispCard">
+        <div class="label">Displacement</div>
+        <div class="value">
+          <span id="dispValue">—</span>
+          <span class="unit">mm</span>
         </div>
-        <div class="kpi-value"><span id="dispValue">—</span><span class="unit">mm</span></div>
-        <div class="kpi-meta"><span class="ref-label">Baseline</span><span id="dispRef" class="ref-value">—</span></div>
-        <div class="kpi-progress"><div id="dispProgress" class="kpi-progress-bar"></div></div>
-      </article>
+        <div class="sub">
+          <span id="dispStatus" class="tag nodata">No data</span>
+          <span id="dispRef" style="color:#94a3b8;">ref —</span>
+        </div>
+      </div>
 
-      <article class="kpi-card ref-card state-nodata" id="refCard">
-        <div class="kpi-head">
-          <span class="kpi-label">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
-            Baseline reference
-          </span>
-          <span id="refBadge" class="kpi-badge nodata">Not set</span>
+      <div class="card reference" id="refCard">
+        <div class="label">Baseline reference</div>
+        <div class="value" style="font-size:1.1rem; gap:12px;">
+          <span id="refSummary" style="font-weight:500; color:#475569;">Not set</span>
         </div>
-        <div class="kpi-value"><span id="refSummary">Waiting for device</span></div>
-        <div class="ref-details" id="refDetails">
-          <span>Press <strong>SET</strong> on the device to capture a baseline</span>
-        </div>
-      </article>
-    </section>
+        <div class="sub" id="refDetail" style="color:#94a3b8;">Press SET on device</div>
+      </div>
+    </div>
 
-    <section class="main-grid">
+    <!-- Chart + Fault log -->
+    <div class="row">
       <div class="panel">
-        <div class="panel-head">
-          <span class="panel-title">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-            </svg>
-            Temperature trend
-          </span>
-          <div class="panel-actions">
-            <button class="pill-btn active" data-range="live">Live</button>
-            <button class="pill-btn" data-range="60">60 pts</button>
-            <button class="pill-btn" data-range="all">All</button>
-          </div>
+        <div class="panel-header">
+          <h2>📈 Temperature history</h2>
+          <span class="badge" id="chartBadge">live</span>
         </div>
-        <div class="chart-wrap"><canvas id="tempChart"></canvas></div>
+        <div class="chart-container">
+          <canvas id="tempChart"></canvas>
+        </div>
       </div>
 
       <div class="panel">
-        <div class="panel-head">
-          <span class="panel-title">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-              <line x1="12" y1="9" x2="12" y2="13"></line>
-              <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-            Fault log
-          </span>
-          <span id="faultCount" class="count-badge zero">0</span>
+        <div class="panel-header">
+          <h2>⚠️ Fault log</h2>
+          <span class="badge" id="faultCount">0 entries</span>
         </div>
-        <div class="log-wrap">
-          <table class="log-table">
-            <thead><tr><th>Sensor</th><th>Value</th><th>Deviation</th><th>Time</th></tr></thead>
-            <tbody id="faultBody">
-              <tr><td colspan="4"><div class="empty-state">No fault entries recorded</div></td></tr>
+        <div class="log-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Sensor</th>
+                <th>Value</th>
+                <th>Deviation</th>
+                <th>Time</th>
+              </tr>
+            </thead>
+            <tbody id="faultTableBody">
+              <tr>
+                <td colspan="4" class="empty-state">No fault entries yet</td>
+              </tr>
             </tbody>
           </table>
         </div>
       </div>
-    </section>
+    </div>
 
-    <footer class="footer">
-      <div class="footer-left">
-        <span class="footer-item"><span class="live-dot"></span>Live stream · Firebase</span>
-        <span class="footer-item">Device uptime: <strong id="uptimeText">—</strong></span>
-        <span class="footer-item">Last update: <strong id="lastUpdateText">—</strong></span>
-      </div>
-      <div class="footer-item">RCC Predictive Monitor v2.1</div>
-    </footer>
-
-    <!-- DEBUG PANEL -->
-    <div class="debug-panel">
-      <div class="debug-head">
-        <span>🔍 Debug console</span>
-        <div style="display:flex;gap:8px;align-items:center">
-          <span id="debugStatus" class="debug-status warn">waiting</span>
-          <button class="debug-toggle" id="debugToggle">Hide</button>
-        </div>
-      </div>
-      <div class="debug-body" id="debugBody"></div>
+    <div class="footer">
+      <span class="refresh-note"><span class="pulse"></span> Real-time · Firebase Realtime Database</span>
     </div>
   </div>
 
-  <div class="toast-container" id="toastContainer"></div>
-
   <script>
     // ============================================================
-    //  DEBUG LOGGER — always logs to console AND debug panel
+    //  FIREBASE CONFIGURATION
+    //  (Your database URL from the ESP32 code)
     // ============================================================
-    const debugBody = document.getElementById('debugBody');
-    const debugStatus = document.getElementById('debugStatus');
-    const debugToggle = document.getElementById('debugToggle');
-    let debugVisible = true;
+    const firebaseConfig = {
+      databaseURL: "https://rcc-predictive-monitor-default-rtdb.asia-southeast1.firebasedatabase.app"
+    };
 
-    debugToggle.addEventListener('click', () => {
-      debugVisible = !debugVisible;
-      debugBody.style.display = debugVisible ? 'block' : 'none';
-      debugToggle.textContent = debugVisible ? 'Hide' : 'Show';
-    });
-
-    function log(msg, kind = 'info') {
-      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      const line = document.createElement('div');
-      line.className = `debug-line ${kind}`;
-      line.innerHTML = `<span class="ts">${time}</span><span class="msg">${msg}</span>`;
-      debugBody.appendChild(line);
-      debugBody.scrollTop = debugBody.scrollHeight;
-      // also to browser console
-      const styles = { ok: 'color:#10b981', err: 'color:#ef4444', info: 'color:#3b82f6' };
-      console.log(`%c[${time}] ${msg}`, styles[kind] || '');
-    }
-
-    function setDebugStatus(text, kind) {
-      debugStatus.textContent = text;
-      debugStatus.className = `debug-status ${kind}`;
-    }
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
     // ============================================================
-    //  FIREBASE INIT
+    //  DOM ELEMENTS
     // ============================================================
-    const DB_URL = "https://rcc-predictive-monitor-default-rtdb.asia-southeast1.firebasedatabase.app";
-    log(`Initialising Firebase… DB: ${DB_URL}`, 'info');
+    const statusBadge = document.getElementById('statusBadge');
+    const statusText = document.getElementById('statusText');
 
-    let db;
-    try {
-      firebase.initializeApp({ databaseURL: DB_URL });
-      db = firebase.database();
-      log('Firebase SDK loaded OK', 'ok');
-      setDebugStatus('SDK loaded', 'ok');
-    } catch (e) {
-      log(`Firebase init failed: ${e.message}`, 'err');
-      setDebugStatus('init failed', 'err');
-    }
+    const tempValue = document.getElementById('tempValue');
+    const tempStatus = document.getElementById('tempStatus');
+    const tempRef = document.getElementById('tempRef');
+    const tempCard = document.getElementById('tempCard');
 
-    // ============================================================
-    //  DOM REFS
-    // ============================================================
-    const $ = (id) => document.getElementById(id);
-    const connPill = $('connPill'), connText = $('connText');
-    const themeBtn = $('themeToggle'), themeIcon = $('themeIcon');
-    const tempCard = $('tempCard'), tempValue = $('tempValue'), tempBadge = $('tempBadge'), tempRef = $('tempRef'), tempProgress = $('tempProgress');
-    const fsrCard = $('fsrCard'), fsrValue = $('fsrValue'), fsrBadge = $('fsrBadge'), fsrRef = $('fsrRef'), fsrProgress = $('fsrProgress');
-    const dispCard = $('dispCard'), dispValue = $('dispValue'), dispBadge = $('dispBadge'), dispRef = $('dispRef'), dispProgress = $('dispProgress');
-    const refCard = $('refCard'), refBadge = $('refBadge'), refSummary = $('refSummary'), refDetails = $('refDetails');
-    const faultBody = $('faultBody'), faultCount = $('faultCount');
-    const uptimeText = $('uptimeText'), lastUpdateText = $('lastUpdateText');
-    const toastContainer = $('toastContainer');
+    const fsrValue = document.getElementById('fsrValue');
+    const fsrStatus = document.getElementById('fsrStatus');
+    const fsrRef = document.getElementById('fsrRef');
+    const fsrCard = document.getElementById('fsrCard');
+
+    const dispValue = document.getElementById('dispValue');
+    const dispStatus = document.getElementById('dispStatus');
+    const dispRef = document.getElementById('dispRef');
+    const dispCard = document.getElementById('dispCard');
+
+    const refSummary = document.getElementById('refSummary');
+    const refDetail = document.getElementById('refDetail');
+    const refCard = document.getElementById('refCard');
+
+    const faultTableBody = document.getElementById('faultTableBody');
+    const faultCount = document.getElementById('faultCount');
 
     // ============================================================
-    //  THEME
+    //  CHART SETUP  (Temperature over time)
     // ============================================================
-    const SUN = `<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>`;
-    const MOON = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>`;
+    const ctx = document.getElementById('tempChart').getContext('2d');
+    const MAX_CHART_POINTS = 60;
 
-    function applyTheme(t) {
-      document.documentElement.setAttribute('data-theme', t);
-      themeIcon.innerHTML = t === 'dark' ? SUN : MOON;
-      try { localStorage.setItem('rcc-theme', t); } catch(e) {}
-      if (typeof chart !== 'undefined' && chart) updateChartTheme(t);
-    }
-    let savedTheme = 'light';
-    try { savedTheme = localStorage.getItem('rcc-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); } catch(e) {}
-    applyTheme(savedTheme);
-    themeBtn.addEventListener('click', () => {
-      applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
-    });
-
-    // ============================================================
-    //  TOASTS
-    // ============================================================
-    function showToast({ title, message, type = 'info', duration = 5000 }) {
-      const t = document.createElement('div');
-      t.className = 'toast';
-      const icons = {
-        danger: `<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>`,
-        success: `<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>`,
-        info: `<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line>`
-      };
-      t.innerHTML = `<svg class="toast-icon ${type}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons[type] || icons.info}</svg>
-        <div class="toast-content"><strong>${title}</strong>${message ? `<span>${message}</span>` : ''}</div>`;
-      toastContainer.appendChild(t);
-      setTimeout(() => { t.classList.add('leaving'); setTimeout(() => t.remove(), 260); }, duration);
-    }
-
-    // ============================================================
-    //  CHART
-    // ============================================================
-    const chartCtx = document.getElementById('tempChart').getContext('2d');
-    const chart = new Chart(chartCtx, {
+    const chart = new Chart(ctx, {
       type: 'line',
-      data: { labels: [], datasets: [{ label: 'Temperature (°C)', data: [], borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.10)', fill: true, tension: 0.35, pointRadius: 0, pointHoverRadius: 4, pointBackgroundColor: '#3b82f6', pointBorderColor: '#fff', pointBorderWidth: 2, borderWidth: 2.5 }] },
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Temperature (°C)',
+          data: [],
+          borderColor: '#2563eb',
+          backgroundColor: 'rgba(37, 99, 235, 0.08)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 2,
+          pointBackgroundColor: '#2563eb',
+          borderWidth: 2,
+        }]
+      },
       options: {
-        responsive: true, maintainAspectRatio: false,
-        animation: { duration: 350, easing: 'easeOutQuart' },
-        interaction: { mode: 'index', intersect: false },
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 300 },
         plugins: {
           legend: { display: false },
-          tooltip: { backgroundColor: 'rgba(15,23,42,0.95)', padding: 12, cornerRadius: 8, titleFont: { size: 12, weight: '600' }, bodyFont: { size: 13, weight: '600' }, displayColors: false, callbacks: { label: (c) => `${c.parsed.y.toFixed(1)} °C` } }
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.parsed.y.toFixed(1)} °C`
+            }
+          }
         },
         scales: {
-          x: { display: true, grid: { display: false, drawBorder: false }, ticks: { maxTicksLimit: 8, font: { size: 10 }, color: '#94a3b8', maxRotation: 0 } },
-          y: { display: true, grid: { color: 'rgba(148,163,184,0.15)', drawBorder: false }, ticks: { font: { size: 10 }, color: '#94a3b8', callback: (v) => v + '°' } }
+          x: {
+            display: true,
+            grid: { display: false },
+            ticks: { maxTicksLimit: 8, font: { size: 10 }, color: '#94a3b8' }
+          },
+          y: {
+            display: true,
+            grid: { color: '#eef2f6' },
+            ticks: {
+              font: { size: 10 },
+              color: '#94a3b8',
+              callback: (v) => v + '°'
+            },
+            suggestedMin: 15,
+            suggestedMax: 40
+          }
         }
       }
     });
 
-    function updateChartTheme(theme) {
-      const isDark = theme === 'dark';
-      const gridColor = isDark ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.15)';
-      const tickColor = isDark ? '#64748b' : '#94a3b8';
-      chart.options.scales.x.grid.color = gridColor;
-      chart.options.scales.y.grid.color = gridColor;
-      chart.options.scales.x.ticks.color = tickColor;
-      chart.options.scales.y.ticks.color = tickColor;
-      chart.update('none');
-    }
-    updateChartTheme(document.documentElement.getAttribute('data-theme'));
-
     // ============================================================
     //  HELPERS
     // ============================================================
-    const ALERT_PERCENT = 20.0;
-    const MAX_CHART_POINTS = 120;
-    const CHART_HISTORY = [];
-    let chartRange = 'live';
-    let latestSnapshot = null;
-    let lastFaultIds = new Set();
-    let firstLoad = true;
-    let lastRefSig = null;
-    let lastSensorKey = null;
-    let lastUpdateAt = 0;
+    function formatTime(ms) {
+      if (!ms && ms !== 0) return '—';
+      const d = new Date(ms);
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
 
-    function fmtTime(ts) { return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
-    function fmtUptime(ms) {
-      if (ms == null) return '—';
-      const s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    function formatUptime(ms) {
+      if (!ms && ms !== 0) return '—';
+      const s = Math.floor(ms / 1000);
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const sec = s % 60;
       if (h > 0) return `${h}h ${m}m`;
       if (m > 0) return `${m}m ${sec}s`;
       return `${sec}s`;
     }
-    function deviation(c, r) {
-      if (c == null || r == null) return null;
-      if (!isFinite(c) || !isFinite(r)) return null;
-      if (Math.abs(r) < 0.0001) return null;
-      return Math.abs((c - r) / r) * 100;
-    }
-    function setCardState(card, s) { card.classList.remove('state-safe','state-alert','state-nodata'); card.classList.add(`state-${s}`); }
-    function setBadge(el, text, kind) { el.textContent = text; el.className = `kpi-badge ${kind}`; }
-    function setProgress(el, pct, kind) { el.style.width = Math.min(pct, 100) + '%'; el.className = `kpi-progress-bar ${kind}`; }
 
     // ============================================================
-    //  RENDER
+    //  RENDER LATEST SENSOR SNAPSHOT
     // ============================================================
-    function renderLatest(d) {
-      latestSnapshot = d;
-      if (!d) {
-        tempValue.textContent = '—'; fsrValue.textContent = '—'; dispValue.textContent = '—';
-        tempRef.textContent = '—'; fsrRef.textContent = '—'; dispRef.textContent = '—';
-        setBadge(tempBadge, 'No data', 'nodata'); setBadge(fsrBadge, 'No data', 'nodata'); setBadge(dispBadge, 'No data', 'nodata');
-        setCardState(tempCard, 'nodata'); setCardState(fsrCard, 'nodata'); setCardState(dispCard, 'nodata');
-        setProgress(tempProgress, 0, ''); setProgress(fsrProgress, 0, ''); setProgress(dispProgress, 0, '');
-        setCardState(refCard, 'nodata'); setBadge(refBadge, 'Not set', 'nodata');
-        refSummary.textContent = 'Waiting for device';
-        refDetails.innerHTML = '<span>Press <strong>SET</strong> on the device to capture a baseline</span>';
-        uptimeText.textContent = '—'; lastUpdateText.textContent = '—';
+    function renderLatest(data) {
+      if (!data) {
+        // clear everything
+        tempValue.textContent = '—';
+        fsrValue.textContent = '—';
+        dispValue.textContent = '—';
+        tempStatus.textContent = 'No data';
+        tempStatus.className = 'tag nodata';
+        fsrStatus.textContent = 'No data';
+        fsrStatus.className = 'tag nodata';
+        dispStatus.textContent = 'No data';
+        dispStatus.className = 'tag nodata';
+        tempRef.textContent = 'ref —';
+        fsrRef.textContent = 'ref —';
+        dispRef.textContent = 'ref —';
+        tempCard.classList.remove('alert', 'safe');
+        fsrCard.classList.remove('alert', 'safe');
+        dispCard.classList.remove('alert', 'safe');
+        refSummary.textContent = 'Not set';
+        refDetail.textContent = 'Press SET on device';
+        refCard.classList.remove('alert', 'safe');
         return;
       }
-      // Temperature
-      const tempValid = d.temperatureValid !== false && d.temperatureC !== -999 && d.temperatureC != null;
-      const tC = tempValid ? Number(d.temperatureC) : null;
-      tempValue.textContent = tempValid ? tC.toFixed(1) : '—';
-      let tempDev = (tempValid && d.referenceSet) ? deviation(tC, d.referenceTemperatureC) : null;
-      if (!tempValid) { setBadge(tempBadge, 'Sensor error', 'nodata'); setCardState(tempCard, 'alert'); setProgress(tempProgress, 100, 'danger'); }
-      else if (d.temperatureFault) { setBadge(tempBadge, `Fault · ${tempDev != null ? tempDev.toFixed(1) : '—'}%`, 'fault'); setCardState(tempCard, 'alert'); setProgress(tempProgress, Math.min((tempDev||0)/ALERT_PERCENT*100,100), 'danger'); }
-      else { setBadge(tempBadge, 'Normal', 'normal'); setCardState(tempCard, 'safe'); const p = tempDev != null ? (tempDev/ALERT_PERCENT)*100 : 0; setProgress(tempProgress, p, p > 75 ? 'warn' : 'safe'); }
-      tempRef.textContent = d.referenceSet ? `${Number(d.referenceTemperatureC).toFixed(1)} °C` : '—';
 
-      // FSR
-      const fsr = d.fsr != null ? Number(d.fsr) : null;
-      fsrValue.textContent = fsr != null ? fsr : '—';
-      let fsrDev = (fsr != null && d.referenceSet) ? deviation(fsr, d.referenceFSR) : null;
-      if (fsr == null) { setBadge(fsrBadge, 'No data', 'nodata'); setCardState(fsrCard, 'nodata'); setProgress(fsrProgress, 0, ''); }
-      else if (d.fsrFault) { setBadge(fsrBadge, `Fault · ${fsrDev != null ? fsrDev.toFixed(1) : '—'}%`, 'fault'); setCardState(fsrCard, 'alert'); setProgress(fsrProgress, Math.min((fsrDev||0)/ALERT_PERCENT*100,100), 'danger'); }
-      else if (d.referenceSet) { setBadge(fsrBadge, 'Normal', 'normal'); setCardState(fsrCard, 'safe'); const p = fsrDev != null ? (fsrDev/ALERT_PERCENT)*100 : 0; setProgress(fsrProgress, p, p > 75 ? 'warn' : 'safe'); }
-      else { setBadge(fsrBadge, 'Awaiting baseline', 'nodata'); setCardState(fsrCard, 'nodata'); setProgress(fsrProgress, 0, ''); }
-      fsrRef.textContent = d.referenceSet ? d.referenceFSR : '—';
+      // --- Temperature ---
+      const tempValid = data.temperatureValid !== false && data.temperatureC !== -999;
+      tempValue.textContent = tempValid ? Number(data.temperatureC).toFixed(1) : '—';
+      const tempFault = data.temperatureFault === true;
+      const tempDev = data.referenceTemperatureC
+        ? Math.abs((data.temperatureC - data.referenceTemperatureC) / data.referenceTemperatureC * 100).toFixed(1)
+        : null;
 
-      // Displacement
-      const disp = d.displacementMM != null ? Number(d.displacementMM) : null;
-      dispValue.textContent = disp != null ? disp.toFixed(1) : '—';
-      let dispDev = (disp != null && d.referenceSet) ? deviation(disp, d.referenceDisplacementMM) : null;
-      if (disp == null) { setBadge(dispBadge, 'No data', 'nodata'); setCardState(dispCard, 'nodata'); setProgress(dispProgress, 0, ''); }
-      else if (d.displacementFault) { setBadge(dispBadge, `Fault · ${dispDev != null ? dispDev.toFixed(1) : '—'}%`, 'fault'); setCardState(dispCard, 'alert'); setProgress(dispProgress, Math.min((dispDev||0)/ALERT_PERCENT*100,100), 'danger'); }
-      else if (d.referenceSet) { setBadge(dispBadge, 'Normal', 'normal'); setCardState(dispCard, 'safe'); const p = dispDev != null ? (dispDev/ALERT_PERCENT)*100 : 0; setProgress(dispProgress, p, p > 75 ? 'warn' : 'safe'); }
-      else { setBadge(dispBadge, 'Awaiting baseline', 'nodata'); setCardState(dispCard, 'nodata'); setProgress(dispProgress, 0, ''); }
-      dispRef.textContent = d.referenceSet ? `${Number(d.referenceDisplacementMM).toFixed(1)} mm` : '—';
-
-      // Baseline card
-      if (d.referenceSet) {
-        setCardState(refCard, 'safe'); setBadge(refBadge, 'Active', 'normal');
-        refSummary.textContent = '✓ Baseline captured';
-        refSummary.style.color = 'var(--success-text)';
-        refDetails.innerHTML = `<span>Temp: <strong>${Number(d.referenceTemperatureC).toFixed(1)} °C</strong></span><span>FSR: <strong>${d.referenceFSR}</strong></span><span>Disp: <strong>${Number(d.referenceDisplacementMM).toFixed(1)} mm</strong></span>`;
+      if (!tempValid) {
+        tempStatus.textContent = 'Sensor error';
+        tempStatus.className = 'tag nodata';
+        tempCard.classList.remove('alert', 'safe');
+        tempCard.classList.add('alert');
+      } else if (tempFault) {
+        tempStatus.textContent = `⚠ Fault (${tempDev}%)`;
+        tempStatus.className = 'tag fault';
+        tempCard.classList.add('alert');
+        tempCard.classList.remove('safe');
       } else {
-        setCardState(refCard, 'nodata'); setBadge(refBadge, 'Not set', 'nodata');
-        refSummary.textContent = 'Waiting for device'; refSummary.style.color = 'var(--text-primary)';
-        refDetails.innerHTML = '<span>Press <strong>SET</strong> on the device to capture a baseline</span>';
+        tempStatus.textContent = 'Normal';
+        tempStatus.className = 'tag normal';
+        tempCard.classList.add('safe');
+        tempCard.classList.remove('alert');
       }
 
-      uptimeText.textContent = fmtUptime(d.uptime_ms);
-      lastUpdateText.textContent = fmtTime(Date.now());
-      lastUpdateAt = Date.now();
-    }
+      if (data.referenceSet) {
+        tempRef.textContent = `ref ${Number(data.referenceTemperatureC).toFixed(1)}°C`;
+      } else {
+        tempRef.textContent = 'ref —';
+      }
 
-    function appendChartPoint(tempC, ts) {
-      if (tempC == null || tempC === -999 || !isFinite(tempC)) return;
-      CHART_HISTORY.push({ t: ts || Date.now(), temp: Number(tempC) });
-      if (CHART_HISTORY.length > 2000) CHART_HISTORY.shift();
-      redrawChart();
-    }
+      // --- FSR ---
+      fsrValue.textContent = data.fsr ?? '—';
+      const fsrFault = data.fsrFault === true;
+      const fsrDev = data.referenceFSR
+        ? Math.abs((data.fsr - data.referenceFSR) / data.referenceFSR * 100).toFixed(1)
+        : null;
 
-    function redrawChart() {
-      let pts = CHART_HISTORY;
-      if (chartRange === 'live') pts = pts.slice(-MAX_CHART_POINTS);
-      else if (chartRange === '60') pts = pts.slice(-60);
-      chart.data.labels = pts.map(p => fmtTime(p.t));
-      chart.data.datasets[0].data = pts.map(p => p.temp);
-      chart.update('none');
-    }
+      if (fsrFault) {
+        fsrStatus.textContent = `⚠ Fault (${fsrDev}%)`;
+        fsrStatus.className = 'tag fault';
+        fsrCard.classList.add('alert');
+        fsrCard.classList.remove('safe');
+      } else if (data.referenceSet) {
+        fsrStatus.textContent = 'Normal';
+        fsrStatus.className = 'tag normal';
+        fsrCard.classList.add('safe');
+        fsrCard.classList.remove('alert');
+      } else {
+        fsrStatus.textContent = 'Waiting';
+        fsrStatus.className = 'tag nodata';
+        fsrCard.classList.remove('alert', 'safe');
+      }
 
-    document.querySelectorAll('.pill-btn[data-range]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.pill-btn[data-range]').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        chartRange = btn.dataset.range;
-        redrawChart();
-      });
-    });
+      fsrRef.textContent = data.referenceSet ? `ref ${data.referenceFSR}` : 'ref —';
+
+      // --- Displacement ---
+      dispValue.textContent = data.displacementMM != null ? Number(data.displacementMM).toFixed(1) : '—';
+      const dispFault = data.displacementFault === true;
+      const dispDev = data.referenceDisplacementMM
+        ? Math.abs((data.displacementMM - data.referenceDisplacementMM) / data.referenceDisplacementMM * 100).toFixed(1)
+        : null;
+
+      if (dispFault) {
+        dispStatus.textContent = `⚠ Fault (${dispDev}%)`;
+        dispStatus.className = 'tag fault';
+        dispCard.classList.add('alert');
+        dispCard.classList.remove('safe');
+      } else if (data.referenceSet) {
+        dispStatus.textContent = 'Normal';
+        dispStatus.className = 'tag normal';
+        dispCard.classList.add('safe');
+        dispCard.classList.remove('alert');
+      } else {
+        dispStatus.textContent = 'Waiting';
+        dispStatus.className = 'tag nodata';
+        dispCard.classList.remove('alert', 'safe');
+      }
+
+      dispRef.textContent = data.referenceSet ? `ref ${Number(data.referenceDisplacementMM).toFixed(1)} mm` : 'ref —';
+
+      // --- Baseline card ---
+      if (data.referenceSet) {
+        refSummary.textContent = '✓ Baseline saved';
+        refSummary.style.color = '#166534';
+        refDetail.textContent = `T: ${Number(data.referenceTemperatureC).toFixed(1)}°C · FSR: ${data.referenceFSR} · D: ${Number(data.referenceDisplacementMM).toFixed(1)}mm`;
+        refCard.classList.add('safe');
+        refCard.classList.remove('alert');
+      } else {
+        refSummary.textContent = 'Not set';
+        refSummary.style.color = '#475569';
+        refDetail.textContent = 'Press SET on device';
+        refCard.classList.remove('safe', 'alert');
+      }
+    }
 
     // ============================================================
-    //  FAULT LOG
+    //  RENDER FAULT LOGS  (newest first)
     // ============================================================
-    function renderFaultLogs(logsObj) {
-      if (!logsObj) {
-        faultBody.innerHTML = `<tr><td colspan="4"><div class="empty-state">No fault entries recorded</div></td></tr>`;
-        faultCount.textContent = '0'; faultCount.classList.add('zero');
+    function renderFaultLogs(logs) {
+      if (!logs || logs.length === 0) {
+        faultTableBody.innerHTML = `<tr><td colspan="4" class="empty-state">No fault entries yet</td></tr>`;
+        faultCount.textContent = '0 entries';
         return;
       }
-      const entries = Object.keys(logsObj).map(k => ({ id: k, ...logsObj[k] }));
-      entries.sort((a, b) => (b.uptime_ms || 0) - (a.uptime_ms || 0));
-      faultCount.textContent = entries.length;
-      faultCount.classList.toggle('zero', entries.length === 0);
 
-      if (!firstLoad) {
-        const newOnes = entries.filter(e => !lastFaultIds.has(e.id));
-        newOnes.slice(0, 3).forEach(e => {
-          const dev = e.deviationPercent != null ? Number(e.deviationPercent).toFixed(1) : '—';
-          showToast({ title: `Fault — ${e.sensor || 'sensor'}`, message: `Deviation ${dev}% exceeds ${ALERT_PERCENT}%`, type: 'danger' });
-        });
-      }
-      lastFaultIds = new Set(entries.map(e => e.id));
+      // Sort by uptime_ms descending (newest first)
+      logs.sort((a, b) => (b.uptime_ms || 0) - (a.uptime_ms || 0));
 
-      if (entries.length === 0) {
-        faultBody.innerHTML = `<tr><td colspan="4"><div class="empty-state">No fault entries recorded</div></td></tr>`;
-        return;
-      }
-      faultBody.innerHTML = entries.map(e => {
-        const s = (e.sensor || 'unknown').toString();
-        const sl = s.toLowerCase();
-        const cls = sl.includes('temp') ? 'temperature' : sl.includes('fsr') ? 'fsr' : 'displacement';
-        const label = s.charAt(0).toUpperCase() + s.slice(1);
-        const cur = e.currentValue != null ? Number(e.currentValue).toFixed(2) : '—';
-        const ref = e.referenceValue != null ? Number(e.referenceValue).toFixed(2) : '—';
-        const dev = e.deviationPercent != null ? Number(e.deviationPercent).toFixed(1) : '—';
+      faultCount.textContent = `${logs.length} entr${logs.length === 1 ? 'y' : 'ies'}`;
+
+      const rows = logs.map(log => {
+        const sensor = log.sensor || 'unknown';
+        const sensorClass = sensor.toLowerCase().includes('temp') ? 'temperature'
+          : sensor.toLowerCase().includes('fsr') ? 'fsr'
+          : 'displacement';
+        const label = sensor.charAt(0).toUpperCase() + sensor.slice(1);
+
+        const current = log.currentValue != null ? Number(log.currentValue).toFixed(2) : '—';
+        const ref = log.referenceValue != null ? Number(log.referenceValue).toFixed(2) : '—';
+        const dev = log.deviationPercent != null ? Number(log.deviationPercent).toFixed(1) : '—';
+        const time = formatUptime(log.uptime_ms);
+
         return `<tr>
-          <td><span class="sensor-chip ${cls}">${label}</span></td>
-          <td class="value-cell">${cur}<br><span class="ref">ref ${ref}</span></td>
-          <td><span class="deviation-chip">${dev}%</span></td>
-          <td class="time-cell">${fmtUptime(e.uptime_ms)}</td>
+          <td><span class="sensor-name ${sensorClass}">${label}</span></td>
+          <td><strong>${current}</strong> <span style="color:#94a3b8;font-size:0.75rem;">(ref ${ref})</span></td>
+          <td><span class="fault-badge">${dev}%</span></td>
+          <td style="color:#64748b;font-size:0.8rem;">${time}</td>
         </tr>`;
       }).join('');
+
+      faultTableBody.innerHTML = rows;
+    }
+
+    // ============================================================
+    //  CHART UPDATE
+    // ============================================================
+    function pushChartPoint(tempC, uptimeMs) {
+      if (tempC == null || tempC === -999 || isNaN(tempC)) return;
+
+      const label = formatTime(Date.now());
+
+      chart.data.labels.push(label);
+      chart.data.datasets[0].data.push(Number(tempC));
+
+      if (chart.data.labels.length > MAX_CHART_POINTS) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+      }
+
+      chart.update('none'); // no animation for smooth updates
     }
 
     // ============================================================
     //  FIREBASE LISTENERS
     // ============================================================
-    if (db) {
-      // ---- Connection state ----
-      db.ref('.info/connected').on('value', (snap) => {
-        const online = snap.val() === true;
-        connPill.className = `status-pill ${online ? 'online' : 'offline'}`;
-        connText.textContent = online ? 'Connected · live' : 'Disconnected';
-        log(online ? 'Realtime DB connected' : 'Realtime DB disconnected', online ? 'ok' : 'err');
-        if (online) setDebugStatus('connected', 'ok');
-        else setDebugStatus('disconnected', 'err');
-      });
 
-      // ---- Latest sensor reading ----
-      log('Attaching listener: /sensorReadings (limitToLast 1)', 'info');
-      db.ref('/sensorReadings').orderByKey().limitToLast(1).on('value',
-        (snap) => {
-          const val = snap.val();
-          if (!val) {
-            log('sensorReadings: EMPTY (no data at path)', 'warn');
-            setDebugStatus('sensor path empty', 'warn');
-            renderLatest(null);
-            return;
-          }
-          const key = Object.keys(val)[0];
-          const data = val[key];
-          if (key === lastSensorKey) {
-            log(`sensorReadings: duplicate key ${key.slice(0,10)}… (unchanged)`, 'info');
-            return;
-          }
-          lastSensorKey = key;
-          log(`sensorReadings: new entry ${key.slice(0,10)}… T=${data.temperatureC} FSR=${data.fsr} D=${data.displacementMM}`, 'ok');
-          setDebugStatus('receiving', 'ok');
-          renderLatest(data);
-          if (data.temperatureValid !== false && data.temperatureC !== -999 && data.temperatureC != null) {
-            appendChartPoint(data.temperatureC, data.timestamp || Date.now());
-          }
-          setTimeout(() => { firstLoad = false; }, 1500);
-        },
-        (err) => {
-          log(`sensorReadings ERROR: ${err.message} (code ${err.code})`, 'err');
-          setDebugStatus('read error', 'err');
-          connText.textContent = 'DB read error';
-          connPill.className = 'status-pill offline';
-          showToast({ title: 'Database read error', message: err.message + ' — check Firebase rules', type: 'danger', duration: 10000 });
-        }
-      );
+    // ---- Latest sensor reading (most recent entry) ----
+    // The ESP32 uses POST to /sensorReadings.json which creates
+    // a new child with a unique key. We need the *last* one.
+    // Using limitToLast(1) and orderByKey (push IDs are chronological).
+    db.ref('/sensorReadings').orderByKey().limitToLast(1).on('value', (snapshot) => {
+      const val = snapshot.val();
+      if (!val) {
+        renderLatest(null);
+        return;
+      }
+      // val is an object with one key -> the entry
+      const key = Object.keys(val)[0];
+      const data = val[key];
+      renderLatest(data);
+      pushChartPoint(data.temperatureC, data.uptime_ms);
+    }, (error) => {
+      console.error('Sensor readings listener error:', error);
+      statusText.textContent = 'DB read error';
+    });
 
-      // ---- Reference settings ----
-      log('Attaching listener: /referenceSettings', 'info');
-      db.ref('/referenceSettings').on('value',
-        (snap) => {
-          const data = snap.val();
-          if (!data) { log('referenceSettings: empty (SET not pressed yet)', 'warn'); return; }
-          log(`referenceSettings: T=${data.temperatureC} FSR=${data.fsr} D=${data.displacementMM}`, 'ok');
-          const sig = JSON.stringify(data);
-          if (lastRefSig !== null && sig !== lastRefSig) {
-            showToast({ title: 'Baseline updated', message: `T ${Number(data.temperatureC).toFixed(1)} °C · FSR ${data.fsr} · Disp ${Number(data.displacementMM).toFixed(1)} mm`, type: 'success' });
-          }
-          lastRefSig = sig;
-          if (data.temperatureC != null) {
-            setCardState(refCard, 'safe'); setBadge(refBadge, 'Active', 'normal');
-            refSummary.textContent = '✓ Baseline captured';
-            refSummary.style.color = 'var(--success-text)';
-            refDetails.innerHTML = `<span>Temp: <strong>${Number(data.temperatureC).toFixed(1)} °C</strong></span><span>FSR: <strong>${data.fsr}</strong></span><span>Disp: <strong>${Number(data.displacementMM).toFixed(1)} mm</strong></span>`;
-          }
-        },
-        (err) => log(`referenceSettings ERROR: ${err.message}`, 'err')
-      );
+    // ---- Reference settings (updated when button pressed) ----
+    db.ref('/referenceSettings').on('value', (snapshot) => {
+      const data = snapshot.val();
+      if (!data) return;
+      // Update only the baseline card quickly; the latest sensor
+      // entry will also refresh soon with referenceSet = true.
+      if (data.temperatureC != null) {
+        refSummary.textContent = '✓ Baseline saved';
+        refSummary.style.color = '#166534';
+        refDetail.textContent = `T: ${Number(data.temperatureC).toFixed(1)}°C · FSR: ${data.fsr} · D: ${Number(data.displacementMM).toFixed(1)}mm`;
+        refCard.classList.add('safe');
+      }
+    });
 
-      // ---- Fault logs ----
-      log('Attaching listener: /faultLogs', 'info');
-      db.ref('/faultLogs').on('value',
-        (snap) => {
-          const val = snap.val();
-          if (!val) { log('faultLogs: empty (no faults logged yet)', 'info'); renderFaultLogs(null); return; }
-          const count = Object.keys(val).length;
-          log(`faultLogs: ${count} entr${count === 1 ? 'y' : 'ies'}`, 'ok');
-          renderFaultLogs(val);
-        },
-        (err) => log(`faultLogs ERROR: ${err.message}`, 'err')
-      );
+    // ---- Fault logs (all entries) ----
+    db.ref('/faultLogs').on('value', (snapshot) => {
+      const val = snapshot.val();
+      if (!val) {
+        renderFaultLogs([]);
+        return;
+      }
+      // val is an object of entries
+      const logs = Object.keys(val).map(k => val[k]);
+      renderFaultLogs(logs);
+    }, (error) => {
+      console.error('Fault logs listener error:', error);
+    });
 
-      // ---- Watchdog: warn if no data after 15s ----
-      setTimeout(() => {
-        if (!latestSnapshot) {
-          log('⚠ No sensor data received after 15s. Check: (1) DB rules allow read, (2) ESP32 is online and has run firebaseSignIn(), (3) path /sensorReadings has data.', 'err');
-          setDebugStatus('no data after 15s', 'err');
-          showToast({
-            title: 'No sensor data received',
-            message: 'Open browser console (F12) — likely Firebase rules or DB URL mismatch.',
-            type: 'danger',
-            duration: 12000
-          });
-        }
-      }, 15000);
-    } else {
-      log('Firebase DB not initialised — SDK may be blocked by network/ad-blocker', 'err');
-      setDebugStatus('no SDK', 'err');
-    }
+    // ============================================================
+    //  CONNECTION STATUS
+    // ============================================================
+    db.ref('.info/connected').on('value', (snapshot) => {
+      const connected = snapshot.val();
+      if (connected) {
+        statusBadge.className = 'status-badge online';
+        statusText.textContent = 'Connected · live';
+      } else {
+        statusBadge.className = 'status-badge offline';
+        statusText.textContent = 'Disconnected';
+      }
+    });
+
+    // ============================================================
+    //  FALLBACK: if no data after 5s, show empty state
+    // ============================================================
+    setTimeout(() => {
+      if (tempValue.textContent === '—') {
+        // no data arrived yet — keep showing placeholders
+      }
+    }, 5000);
   </script>
 </body>
 </html>
